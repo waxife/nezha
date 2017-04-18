@@ -26,13 +26,11 @@ ALL_C=$(shell ls *.c)
 SHELLTINYLIB=$(TOPDIR)/shell/shell_tiny.lo
 SHELLALLLIB=$(TOPDIR)/shell/shell.lo
 
-#ifndef SHELLLIB
-#SHELLLIB=$(SHELLTINYLIB)
-#else
-SHELLLIB=$(SHELLALLLIB)
-#endif
+ifndef SHELLLIB
+SHELLLIB=$(SHELLTINYLIB)
+endif
+# SHELLLIB=$(SHELLALLLIB)
 SYSLIB=$(SHELLLIB)
-
 ifeq ($(TOPDIR)/net, $(wildcard $(TOPDIR)/net))
 SYSLIB+=$(TOPDIR)/net/net.la
 endif
