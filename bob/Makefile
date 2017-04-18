@@ -20,6 +20,8 @@ RESOURCE=t582_res.bin
 DFU= bob.dfu
 
 all: mkapp 
+	echo "DFU = bob.dfu" > upgrade.sh
+	echo "TIME = $(shell date +%Y%m%d%H%M)" >> upgrade.sh
 
 include $(TOPDIR)/Rules.make
 
