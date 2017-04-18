@@ -85,3 +85,4 @@ elif [ -f /opt/toolchain/sde/bin/sdeenv.sh ]; then
 fi
 
 $BASH --login --rcfile ~/.bashrc
+
