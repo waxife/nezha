@@ -1,0 +1,90 @@
+FFW (Fast Forward)
+
+T(n)    the expected display time of the n-th picture
+t(n)    the actual   display time of the n-th picture
+F(n)    the expected frame number of the n-th picture
+f(n)    the actual   frame number of the n-th picture
+
+
+     t(n)         T(n+1)  t(n+1)
+  ----|-------------|-------|----> time flow
+     f(n)         F(n+1)  f(n+1)
+
+
+The expected display time of the next picture equals the current time plus the
+duration of frame interval.
+
+    T(n+1) = t(n) + 1/fps                               ...... Rule[1]
+
+
+The expected frame number of the next picture equals the current frame number
+plus the seeking speed (x2, x4, x8 ...)
+
+    F(n+1) = f(n) + speed                               ...... Rule[2]
+
+
+The actual frame number for now equal the expected frame number plus the
+frame difference between the actual and expected time.
+
+    f(n) = F(n) + [t(n) - T(n)]*fps                     ...... Rule[3]
+
+
+Given Rule[2], Rule[3], and Rule[1], the expected frame number of the next
+picture can be calculated by the expected frame number of the current picture
+and the time elapsed since the last picture.
+
+    F(n+1) = f(n) + speed
+           = F(n) + [t(n) - T(n)]*fps + speed
+           = F(n) + [t(n) - t(n-1) - 1/fps]*fps + speed
+           = F(n) + [t(n) - t(n-1)]*fps - 1 + speed
+
+    ΔF(n) = F(n+1) - F(n)
+          = [t(n) - t(n-1)]*fps - 1 + speed, at t(n)    ...... Rule[4]
+
+For the first seeking frame, the frame number equals the seeking speed.
+
+    Assuming t(0) - t(-1) = 1/fps,
+    ΔF(0) = [t(0) - t(-1)]*fps - 1 + speed
+          = speed, at t(0)                              ...... Rule[5]
+
+
+The example of calculating frame number of the n-th picture is shown below:
+
+    ΔF(1) = [t(1) - t(0)]*fps - 1 + speed, at t(1)
+    ΔF(2) = [t(2) - t(1)]*fps - 1 + speed, at t(2)
+    ΔF(3) = [t(3) - t(2)]*fps - 1 + speed, at t(3)
+    ...
+
+===============================================================================
+FBW (Fast Backward)
+
+T(n)    the expected display time of the n-th picture
+t(n)    the actual   display time of the n-th picture
+F(n)    the expected frame number of the n-th picture
+f(n)    the actual   frame number of the n-th picture
+
+
+     t(n)         T(n+1)  t(n+1)
+  ----|-------------|-------|----> time flow
+     f(n)         F(n+1)  f(n+1)
+
+
+    F(n+1) = f(n) - speed                               ...... Rule[6]
+    f(n) = F(n) - [t(n) - T(n)]*fps                     ...... Rule[7]
+    ΔF(n) = -{[t(n) - t(n-1)]*fps - 1 + speed}, at t(n) ...... Rule[8]
+    ΔF(0) = -speed                                      ...... Rule[9]
+
+
+The example of calculating frame number of the n-th picture is shown below:
+
+    ΔF(1) = -{[t(1) - t(0)]*fps - 1 + speed}, at t(1)
+    ΔF(2) = -{[t(2) - t(1)]*fps - 1 + speed}, at t(2)
+    ΔF(3) = -{[t(3) - t(2)]*fps - 1 + speed}, at t(3)
+    ...
+
+===============================================================================
+
+Summary, for both FFW and FBW,
+
+    |ΔF(n)| = [t(n) - t(n-1)]*fps - 1 + speed, at t(n)  ...... Rule[10]
+    |ΔF(0)| = speed, at t(0)                            ...... Rule[11]

@@ -1,0 +1,1603 @@
+/**
+ *  @file   sd.c
+ *  @brief  sd driver for tboot
+ *  $Id: sd.c,v 1.2 2014/02/05 07:58:15 kevin Exp $
+ *  $Author: kevin $
+ *  $Revision: 1.2 $
+ *
+ *  Copyright (c) 2006 Terawins Inc. All rights reserved.
+ * 
+ *  @date   2007/03/24  jedy New file.
+ *
+ */
+
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
+#include <errno.h>
+#include <unistd.h>
+#include <fs.h>
+#include <dma.h>
+#include <gpio.h>
+#include <io.h>
+#include <sys.h>
+#include <debug.h>
+#include <cache.h>
+#include <interrupt.h>
+#include <mipsregs.h>
+#include <sd.h>
+
+//#define CONFIG_ALWAYS_SD_POWER_ON
+
+
+#define T300_SDC_BASE_T      			0xba800000
+#define SDC_CMD_REG						(T300_SDC_BASE_T + 0x0000)
+#define SDC_ARGU_REG					(T300_SDC_BASE_T + 0x0004)
+#define SDC_RESPONSE0_REG				(T300_SDC_BASE_T + 0x0008)
+#define SDC_RESPONSE1_REG				(T300_SDC_BASE_T + 0x000C)
+#define SDC_RESPONSE2_REG				(T300_SDC_BASE_T + 0x0010)
+#define SDC_RESPONSE3_REG				(T300_SDC_BASE_T + 0x0014)
+#define SDC_RSP_CMD_REG					(T300_SDC_BASE_T + 0x0018)
+#define SDC_DATA_CTRL_REG				(T300_SDC_BASE_T + 0x001C)
+#define SDC_DATA_TIMER_REG			    (T300_SDC_BASE_T + 0x0020)
+#define SDC_DATA_LEN_REG				(T300_SDC_BASE_T + 0x0024)
+#define SDC_STATUS_REG					(T300_SDC_BASE_T + 0x0028)
+#define SDC_CLEAR_REG					(T300_SDC_BASE_T + 0x002C)
+#define SDC_INT_MASK_REG				(T300_SDC_BASE_T + 0x0030)
+#define SDC_POWER_CTRL_REG			    (T300_SDC_BASE_T + 0x0034)
+#define SDC_CLOCK_CTRL_REG			    (T300_SDC_BASE_T + 0x0038)
+#define SDC_BUS_WIDTH_REG				(T300_SDC_BASE_T + 0x003C)
+#define SDC_DATA_WINDOW_REG			    (T300_SDC_BASE_T + 0x0040)
+#define SDC_FEATURE_REG                 (T300_SDC_BASE_T + 0x0044)
+
+/* command register */
+#define CMD_SDC_RST     (1 << 10)
+#define CMD_CMD_EN      (1 << 9)
+#define CMD_APP_CMD     (1 << 8)
+#define CMD_LONG_RSP    (1 << 7)
+#define CMD_NEED_RSP    (1 << 6)
+#define CMD_CMD_MASK    (0x3f)
+
+/* clock control register */
+#define CLK_DIS         (1 << 8)
+#define CLK_SD          (1 << 7)
+#define CLK_DIV_MASK    (0x3f)
+
+/* bus width register */
+#define WIDE_BUS_SUPPORT        (1 << 3)
+#define BUS_WIDTH_4             (1 << 2)
+#define BUS_WIDTH_1             (1 << 0)
+
+/* status register */
+#define STATUS_WRITE_PROT       (1 << 12)
+#define STATUS_CARD_DETECT      (1 << 11)
+#define STATUS_CARD_CHANGE      (1 << 10)
+#define STATUS_FIFO_ORUN        (1 << 9)
+#define STATUS_FIFO_URUN        (1 << 8)
+#define STATUS_DATA_END         (1 << 7)
+#define STATUS_CMD_SENT         (1 << 6)
+#define STATUS_DATA_CRC_OK      (1 << 5)
+#define STATUS_RSP_CRC_OK       (1 << 4)
+#define STATUS_DATA_TIMEOUT     (1 << 3)
+#define STATUS_RSP_TIMEOUT      (1 << 2)
+#define STATUS_DATA_CRC_FAIL    (1 << 1)
+#define STATUS_RSP_CRC_FAIL     (1 << 0)
+
+/* data register */
+#define DATA_EN                 (1 << 6)
+#define DATA_DMA                (1 << 5)
+#define DATA_WRITE              (1 << 4)
+#define DATA_READ               0
+
+#define BLK_SIZE_8              3
+#define BLK_SIZE_256            8
+#define BLK_SIZE_512            9
+#define BLK_SIZE_1024           10
+#define BLK_SIZE_2048           11
+
+
+/* SD card status */
+#define SD_OCR_POWER_UP                     (1 << 31)
+
+#define SD_STATUS_OUT_OF_RANGE				(1 << 31)
+#define SD_STATUS_ADDRESS_ERROR				(1 << 30)
+#define SD_STATUS_BLOCK_LEN_ERROR			(1 << 29)
+#define SD_STATUS_ERASE_SEQ_ERROR			(1 << 28)
+#define SD_STATUS_ERASE_PARAM				(1 << 27)
+#define SD_STATUS_WP_VIOLATION				(1 << 26)
+#define SD_STATUS_CARD_IS_LOCK				(1 << 25)
+#define SD_STATUS_LOCK_UNLOCK_FILED			(1 << 24)
+#define SD_STATUS_COM_CRC_ERROR				(1 << 23)
+#define SD_STATUS_ILLEGAL_COMMAND			(1 << 22)
+#define SD_STATUS_CARD_ECC_FAILED			(1 << 21)
+#define SD_STATUS_CC_ERROR					(1 << 20)
+#define SD_STATUS_ERROR						(1 << 19)
+#define SD_STATUS_UNDERRUN					(1 << 18)
+#define SD_STATUS_OVERRUN					(1 << 17)
+#define SD_STATUS_CID_CSD_OVERWRITE			(1 << 16)
+#define SD_STATUS_WP_ERASE_SKIP				(1 << 15)
+#define SD_STATUS_CARD_ECC_DISABLE			(1 << 14)
+#define SD_STATUS_ERASE_RESET				(1 << 13)
+#define SD_STATUS_CURRENT_STATE				(0xf << 9)
+#define SD_STATUS_READY_FOR_DATA			(1 << 8)
+#define SD_STATUS_APP_CMD					(1 << 5)
+#define SD_STATUS_AKE_SEQ_ERROR				(1 << 3)
+
+#define SD_STATUS_ERROR_BITS	\
+                (SD_STATUS_OUT_OF_RANGE | SD_STATUS_ADDRESS_ERROR | \
+				SD_STATUS_BLOCK_LEN_ERROR | SD_STATUS_ERASE_SEQ_ERROR | \
+                SD_STATUS_ERASE_PARAM | SD_STATUS_WP_VIOLATION | \
+                SD_STATUS_LOCK_UNLOCK_FILED | SD_STATUS_CARD_ECC_FAILED | \
+                SD_STATUS_CC_ERROR | SD_STATUS_ERROR | \
+                SD_STATUS_UNDERRUN | SD_STATUS_OVERRUN | \
+                SD_STATUS_CID_CSD_OVERWRITE | SD_STATUS_WP_ERASE_SKIP | \
+                SD_STATUS_AKE_SEQ_ERROR)
+
+#define CARD_ERR(xcardstatus)   ((xcardstatus)&(SD_STATUS_ERROR_BITS))
+
+#define K       1000
+#define KK      (1000*1000)
+const unsigned long taac_timeunit_table[] =
+{
+	1, 10, 100, 1*K, 10*K, 100*K, 1*KK, 10*KK,
+};
+
+const unsigned long taac_timevalue_table[] =
+{
+	//0, 1.0, 1.2, 1.3, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0, 8.0
+	0, 10, 12, 13, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80
+};
+
+const unsigned long trans_speed_rateuint_table[] = 
+{
+	100*K, 1*KK, 10*KK, 100*KK
+};
+
+#undef K
+#undef KK
+
+const unsigned long trans_speed_timevalue_table[] =
+{
+	//0, 1.0, 1.2, 1.3, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0, 8.0
+	0, 10, 12, 13, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80
+};
+
+const unsigned long vdd_curr_min_table[] =
+{
+	//0.5, 1, 5, 10, 25, 35, 60, 100,
+	1, 1, 5, 10, 25, 35, 60, 100,
+};
+const unsigned long vdd_curr_max_table[] =
+{
+	1, 5, 10, 25, 35, 45, 80, 200,
+};
+
+#if 1 // sherman test ... 
+/* add for avoid dma write 0 size chip limitation */
+#define LL2C_DMAFF_TH(ll)   ((((ll) >> 29) & 0x7) << 24)
+#define LL2C_TCMASK(ll)     ((((ll) >> 28) & 1) << 31)
+#define LL2C_SRC_WIDTH(ll)  ((((ll) >> 25) & 0x7) << 11)
+#define LL2C_DST_WIDTH(ll)  ((((ll) >> 22) & 0x7) << 8)
+#define LL2C_SRCAD_CTL(ll)  ((((ll) >> 20) & 0x3) << 5)
+#define LL2C_DSTAD_CTL(ll)  ((((ll) >> 18) & 0x3) << 3)
+#define LL2C_SRC_SEL(ll)    ((((ll) >> 17) & 1) << 2)
+#define LL2C_DST_SEL(ll)    ((((ll) >> 16) & 1) << 1)
+
+#define LLP2CSR(xll)  LL2C_DMAFF_TH(xll) | LL2C_TCMASK(xll) | LL2C_SRC_WIDTH(xll) | \
+                      LL2C_DST_WIDTH(xll) | LL2C_SRCAD_CTL(xll) |  LL2C_DSTAD_CTL(xll) | \
+                      LL2C_SRC_SEL(xll) | LL2C_DST_SEL(xll)
+#define LLPC_TCMASK     (1 << 28)
+
+static void avoid_dma_bug(int dma)
+{
+    unsigned long csr;
+    unsigned long cfg;
+    unsigned long tc;
+    int i;
+    
+    cfg = SRC_CH(DMA_SD) | 0x7;
+    csr = CSR_BURST_16 |  CSR_SRC_INC | CSR_DST_INC | CSR_SRC_W32 | CSR_DST_W32;
+    writel(csr, DMA_CH_CSR(DMA_SD));
+    writel(cfg, DMA_CH_CFG(DMA_SD));
+    writel(0, DMA_CH_SrcAddr(DMA_SD));
+    writel(0, DMA_CH_DstAddr(DMA_SD));
+    writel(1, DMA_CH_SIZE(DMA_SD));
+    writel(0, DMA_CH_LLP(DMA_SD));
+
+    //wmb();
+
+    writel(csr | CSR_CH_EN, DMA_CH_CSR(DMA_SD));
+    
+    for (i = 0; i < 100; i++) {
+        tc = readl(DMA_TC);
+        if (tc & (1 << DMA_SD)) 
+            break;
+    }
+    
+    writel(1 << DMA_SD, DMA_INT_TC_CLR);  /* clear TC and INT */
+    writel(ERRABT << DMA_SD, DMA_ERRABT_CLR); /* clear err abort INT */
+}
+
+static void inline mk_llp(int read, struct slld_t *llp, void *buf, int dsize)
+{
+    if (read) {
+        llp->srcaddr = virt_to_phys(SDC_DATA_WINDOW_REG);
+        llp->dstaddr = virt_to_phys(buf);
+        llp->totsize = dsize >> 2;
+        llp->control = LLPC_TCMASK | LLPC_READ | LLPC_SRC_FIX | LLPC_DST_INC | LLPC_SRC_W32 | LLPC_DST_W32;        
+    } else {
+        llp->srcaddr = virt_to_phys(buf);
+        llp->dstaddr = virt_to_phys(SDC_DATA_WINDOW_REG);
+        llp->totsize = dsize >> 2;
+        llp->control = LLPC_TCMASK | LLPC_WRITE | LLPC_SRC_INC | LLPC_DST_FIX | LLPC_SRC_W32 | LLPC_DST_W32;        
+    }
+    //printf("data read %d src %x dst %x dsize %d\n", read, llp->srcaddr, llp->dstaddr, dsize);
+}
+/* setup sd dma */
+static int setup_dma_multi(sdc_t *sdc, int read, void *data, int dsize)
+{
+    struct slld_t *llp = NULL;
+    struct slld_t *last_llp = &sdc->lld[0];
+    unsigned long cfg, csr;
+    int i, num, datalen;
+    char *buf;
+
+//dbg(0, ">>>>> setup_dma_multi >>>>>>> \n");
+	if ((readl(DMA_CSR) & 1) == 0) {
+        writel(1, DMA_CSR);    /* both AH0, AH1 are little endian, enable dma */
+    }
+    
+    /* stop dma transmission */
+    if (readl(DMA_EN) & (1 << sdc->dma)) {
+        writel(CSR_ABORT, DMA_CH_CSR(sdc->dma));
+        for(i = 0; i < 1000; i++) {
+            if (readl(DMA_ERRABT_CLR) & (ERRABT << sdc->dma))
+                break;
+        }
+        avoid_dma_bug(sdc->dma);
+    }
+    
+    writel(1 << sdc->dma, DMA_INT_TC_CLR);  /* clear TC and INT */
+    writel(ERRABT << sdc->dma, DMA_ERRABT_CLR); /* clear err abort INT */
+
+	num = dsize / 512;
+	buf = (char *)data;
+	datalen = dsize;
+
+    /* prepare llp */
+    for (i=0; i < num*2; i++) {
+        llp = &sdc->lld[i];        
+        last_llp->llp = virt_to_bus(llp);
+        last_llp = llp;
+        mk_llp(read, llp, (void *)buf, 256);
+        buf += 256;
+        datalen -= 256;                
+    }
+
+	last_llp->llp = 0;
+    last_llp->control = last_llp->control & ~LLPC_TCMASK;
+	assert(datalen == 0);
+
+    llp = &sdc->lld[0];    
+    assert(llp->totsize > 0);
+    if (read) {
+        cfg = SRC_HE | SRC_CH(sdc->dma) | 0x7;
+        csr = CSR_BURST_4 | CSR_READ | CSR_HWH | LLP2CSR(llp->control);        
+    } else {
+        cfg = DST_HE | DST_CH(sdc->dma) | 0x7;
+        csr = CSR_BURST_4 | CSR_WRITE | CSR_HWH | LLP2CSR(llp->control) ;        
+    }
+
+    writel(csr, DMA_CH_CSR(sdc->dma));
+    writel(cfg, DMA_CH_CFG(sdc->dma));
+    writel(llp->srcaddr, DMA_CH_SrcAddr(sdc->dma));
+    writel(llp->dstaddr, DMA_CH_DstAddr(sdc->dma));
+    writel(llp->totsize, DMA_CH_SIZE(sdc->dma));
+    writel(llp->llp, DMA_CH_LLP(sdc->dma));
+
+	flush_dcache_all();	
+	do {} while(0);
+
+    writel(csr | CSR_CH_EN, DMA_CH_CSR(sdc->dma));
+#if 0
+printf("s%08x d%08x t%08x c%08x\n", llp->srcaddr, llp->dstaddr, llp->totsize, llp->control);
+printf("[0]\n");
+printf("cfg   %08x=%08x %08lx\n", DMA_CH_CFG(sdc->dma), readl(DMA_CH_CFG(sdc->dma)), cfg);
+printf("saddr %08x=%08x %08x\n", DMA_CH_SrcAddr(sdc->dma), readl(DMA_CH_SrcAddr(sdc->dma)), llp->srcaddr);
+printf("daddr %08x=%08x %08x\n", DMA_CH_DstAddr(sdc->dma), readl(DMA_CH_DstAddr(sdc->dma)), llp->dstaddr);
+printf("size  %08x=%08x %08x\n", DMA_CH_SIZE(sdc->dma), readl(DMA_CH_SIZE(sdc->dma)), llp->totsize);
+printf("llp   %08x=%08x\n", DMA_CH_LLP(sdc->dma), readl(DMA_CH_LLP(sdc->dma)));
+printf("csr   %08x=%08x %08lx\n", DMA_CH_CSR(sdc->dma), readl(DMA_CH_CSR(sdc->dma)), csr);
+printf("control 0x%x \n", llp->control);
+#endif
+
+    return 0;
+}
+#endif
+
+static int _sdc_cmd(int cmd, unsigned long arg)
+{
+    /* write argument */
+    writel(arg, SDC_ARGU_REG);
+
+    /* send command */
+    writel(cmd, SDC_CMD_REG);
+    
+    return 0;
+
+}
+
+static int _sdc_wait_cmd_done(int msec, int cmd)
+{
+    int wait = msec * 1000 + 1;
+    int i;
+    int status = 0;
+
+    for (i = 0; i < wait; i++) {
+        status = readl(SDC_STATUS_REG);
+        if ((status & 0xff) != 0) 
+            return status;
+        usleep(1);
+    }
+    
+    dbg(2, "!!! wait_cmd_done timeout %ccmd%d status = %08x\n", 
+        (cmd & CMD_APP_CMD) ? 'a' : ' ', (cmd & CMD_CMD_MASK), status);
+
+    return -EBUSY;
+
+}
+
+/* response type */
+
+#define NR      0       /* NR : no response */   
+#define R1      1       /* R1 : [45:40] cmd idx [39:8] card status response */
+#define R2      2       /* R2 : [133:128] all 1 [127:1] CID, CSD register response */    
+#define R3      3       /* R3 : [45:40] all 1   [39:38] OCR register response */
+#define R6      6       /* R6 : [45:40] cmd idx [39:8] RCA register response */
+#define R7      7       /* R7 : [45:40] CMD8    [39:20] all 0 [19:16] 0001 [15:8] echo pattern */
+
+#define QUITE(rt)       (-(rt))
+#define IS_QUITE(rt)    ((rt) < 0)
+
+#define CMD(cmd)        ((cmd) | CMD_CMD_EN)
+#define ACMD(cmd)       ((cmd) | CMD_APP_CMD | CMD_CMD_EN)
+
+
+static int sdc_sendcmd(sdc_t *sdc, int cmd, int arg, int rt, uint32_t *response)
+{
+    int tryi;
+    int status = 0;
+    int need_rsp = 1;
+    int acmd = 0;
+    int quite = IS_QUITE(rt);
+    
+    if (IS_QUITE(rt)) {
+        quite = 1;
+        rt = -rt;
+    }
+
+    if (rt == NR) {
+        need_rsp = 0;
+    } else if (rt == R2) {
+        cmd = cmd | CMD_LONG_RSP | CMD_NEED_RSP;
+    } else {
+        cmd = cmd | CMD_NEED_RSP;
+    }
+
+    if ((cmd & CMD_APP_CMD) == CMD_APP_CMD) {
+        acmd = 1;
+    }
+
+    for (tryi = 0; tryi < 3; tryi++) {
+        if (acmd) { /* app command */
+            /* clear command relative bits of status register */
+            writel(0x7ff, SDC_CLEAR_REG);
+
+            _sdc_cmd(CMD_NEED_RSP | CMD(55), sdc->rca);
+            status = _sdc_wait_cmd_done(10, CMD(55));
+            if (status < 0) 
+                goto EXIT;
+            
+            if ((status & STATUS_RSP_CRC_OK) == 0)
+                continue;
+
+            status = readl(SDC_RESPONSE0_REG);
+            if (CARD_ERR(status))
+                continue;
+        }
+
+
+        /* clear command relative bits of status register */
+        writel(0x7ff, SDC_CLEAR_REG);
+       
+        /* write argument */
+        writel(arg, SDC_ARGU_REG);
+    
+        /* send command */
+        writel(cmd, SDC_CMD_REG);
+        status = _sdc_wait_cmd_done(100, cmd);
+        if (status < 0) 
+            goto EXIT;
+
+        if (status &  STATUS_RSP_TIMEOUT) {
+            /* try again */
+            sdc->rsp_timeout_err++;
+            continue;
+        }
+
+        if (status & STATUS_RSP_CRC_FAIL) {
+            /* try again */
+            sdc->rsp_crc_err++;
+            continue;
+        }
+
+        if (need_rsp) {
+            if (status & STATUS_RSP_CRC_OK) { /* command is done */
+                if (cmd & CMD_LONG_RSP) {
+                    *response = readl(SDC_RESPONSE0_REG);
+                    *(response+1) = readl(SDC_RESPONSE1_REG);
+                    *(response+2) = readl(SDC_RESPONSE2_REG);
+                    *(response+3) = readl(SDC_RESPONSE3_REG);
+
+                } else {
+                    *response = readl(SDC_RESPONSE0_REG);
+                }
+
+                if (rt == R1 && CARD_ERR(*response) && !quite) {
+                    dbg(2, "get card status error %lx rsp cmd %x\n", *response, readl(SDC_RSP_CMD_REG));
+                    goto EXIT;
+                }
+
+                return 0;
+            }
+            
+        } else {
+            if (status & STATUS_CMD_SENT)  /* command is done */
+                return 0;
+        }
+    }
+
+EXIT:
+    if (! quite) {
+        dbg(2, "send %ccmd%d arg %08x status = %x\n", (acmd) ? 'a' : ' ', (cmd & CMD_CMD_MASK), arg, status);
+    }
+
+    if (response) 
+        *response = status;
+
+    return -EIO;
+}
+
+
+static char *_sd_state[] = { "Idle", "Ready", "Ident", "Stby", "Tran", "Data", 
+                      "Rcv", "Prg", "Dis" };
+static char *get_state(sdc_t *sdc)
+{
+    uint32_t cardstatus;
+    int rc;
+    int state;
+
+    rc = sdc_sendcmd(sdc, CMD(13), sdc->rca, R1, &cardstatus);
+    if (rc < 0) 
+        return "Unknown";
+
+    state = (cardstatus >> 9) & 0xf;
+    if (state >= 9)
+        return "Reserved";
+    
+    return _sd_state[state];
+}
+
+#if 0
+static int sdc_setblksize(sdc_t *sdc, int blksize)
+{
+	uint32_t cardstatus;
+    int rc;
+
+    rc = sdc_sendcmd(sdc, CMD(16), blksize, R1, &cardstatus);
+    if (rc < 0) 
+        return -EIO;
+
+    return 0;
+}
+#endif
+
+static int sdc_pioread(sdc_t *sdc, uint32_t *buf, int len) 
+{
+    int i;
+    int wait = 10000;
+    int fifosize;
+    int wordcount;
+    int status;
+
+    fifosize = (readl(SDC_FEATURE_REG) & 0xff);
+    while(len > 0) {
+        for(i = 0; i < wait; i++) {
+            status = readl(SDC_STATUS_REG);
+            if (status & STATUS_FIFO_ORUN)
+                break;
+            if (status & STATUS_DATA_TIMEOUT)   /* don't wait data timeout */
+                goto EXIT;
+            usleep(1);
+        }
+
+        if ((status & STATUS_FIFO_ORUN) == 0) {
+            dbg(2, "wait data ready timeout %x\n", status);
+            goto EXIT;
+        }
+
+        if (len > fifosize)
+            wordcount = fifosize;
+        else 
+            wordcount = len / 4;
+
+        for (i = 0; i < wordcount; i++, buf++)
+            *buf = readl(SDC_DATA_WINDOW_REG);
+        
+        len -= (wordcount * 4);
+
+        writel(STATUS_FIFO_ORUN, SDC_CLEAR_REG);
+    }
+    
+    /* check data CRC ok */
+    for(i = 0; i < wait; i++) {
+        status = readl(SDC_STATUS_REG);
+        if (status & STATUS_DATA_END) {
+            if (status & STATUS_DATA_CRC_OK)
+                return 0;
+            if (status & STATUS_DATA_CRC_FAIL)
+                goto EXIT;
+        } else if (status & STATUS_DATA_TIMEOUT) {
+            goto EXIT;
+        }
+    }
+
+    dbg(2, "wait data crc ok and data end timeout %x\n", status);
+    
+EXIT:
+    return -EIO;
+
+}
+
+
+
+
+static inline uint32_t sd_read_timeout_cycle(uint32_t bus_clk, int taac, int nsac)
+{
+    uint32_t ns_total, ns_percycle;
+
+    ns_percycle = ((1000*1000*1000) + (bus_clk/2)) / (bus_clk);
+    
+    ns_total = (taac + (nsac * 100 * ns_percycle)) * 100;
+
+    if (ns_total > (100*1000*1000))
+        ns_total = 100*1000*1000;
+
+    return (ns_total/ns_percycle);
+
+}
+
+
+static int sdc_csd_parse(sdc_t *sdc, uint32_t csd[], int *pdiv)
+{
+    sd_csd_bit_t *pcsd;
+    int taac;
+    int nsac;
+    int div;
+    int speed;
+    int cardbusclk;
+    int writefactor;
+
+
+    if ((csd[0] & 1) != 1) {
+        dbg(2, "Invalid CSD %08lx %08lx %08lx %08lx\n", csd[0], csd[1], csd[2], csd[3]);
+        return -EIO;
+    }
+
+    pcsd = (sd_csd_bit_t *)csd;
+    taac = (taac_timevalue_table[pcsd->TAAC_TimeValue] * 
+                 taac_timeunit_table[pcsd->TAAC_TimeUnit]) / 10;
+    nsac = pcsd->NSAC * 100;
+    speed = (trans_speed_rateuint_table[pcsd->TRAN_SPEED_RateUnit] * 
+                        trans_speed_timevalue_table[pcsd->TRAN_SPEED_TimeValue]) / 10;
+    sdc->card.read_bl_len = pcsd->READ_BL_LEN;
+    sdc->card.rblksize = 1 << pcsd->READ_BL_LEN; 
+    sdc->card.write_bl_len =  pcsd->WRITE_BL_LEN;
+    sdc->card.wblksize = 1 << pcsd->WRITE_BL_LEN;
+
+    if (sdc->card.type == SD_CARD && pcsd->CSD_STRUCTURE == 1) { /* SD CSD v2.0 */
+        int c_size;
+        c_size = (csd[1] >> 16) + (csd[2] & 0x3f);
+        sdc->card.capacity = c_size * 512;
+        sdc->card.nblocks = sdc->card.capacity / sdc->card.rblksize;
+    } else {
+        int c_size;
+        int mult;
+        c_size = ((int)pcsd->C_SIZE_2 << 2) + (pcsd->C_SIZE_1);
+        mult = 1 << ((int)pcsd->C_SIZE_MULT + 2);
+        sdc->card.nblocks =  mult* (c_size + 1);
+        sdc->card.capacity = sdc->card.nblocks * sdc->card.rblksize;
+    }
+    
+    writefactor = (1 << pcsd->R2W_FACTOR);
+
+//printf("speed = %d csd %08x %08x %08x %08x\n", speed, csd[0], csd[1], csd[2], csd[3]);
+
+    for (div = 0x3f; div >= 0 ; div--) {
+        //dbg(0, "div 0x%x (sys_ahb_clk / (2*(div+1))) %d \n", div, (sys_ahb_clk / (2*(div+1))));
+        if (speed < (sys_ahb_clk / (2*(div+1))))
+            break;
+    }
+    div++;
+
+    if (div > 0x3f) /* clock divid only 5 bits */
+        div = 0x3f;
+#if 0 // sherman test ...
+    div = 1;
+#endif
+    *pdiv = div;
+//printf("div = %d\n", div);
+    cardbusclk = sys_ahb_clk / (2 * (div+1));
+ 
+    sdc->card.readtimeout = sd_read_timeout_cycle(cardbusclk, taac, nsac);
+    sdc->card.writetimeout = sdc->card.readtimeout  * writefactor;
+    sdc->card.speed = speed;
+    sdc->card.div = div;
+    sdc->card.taac = taac;
+    sdc->card.nsac = nsac;
+
+    return 0;
+
+}
+
+#define SD_ID_MODE_CLOCK   (400*1000)      /* defult 400K */
+#define MMC_ID_MODE_CLOCK  (300*1000)      /* defult 400K */
+
+static int sdc_reset(sdc_t *sdc, int sd)
+{
+    int reset = 0;
+    int i;
+    int rc;
+    uint32_t rsp = 0;
+    uint32_t rca;
+    int powerup = 0;
+    int clkdiv;
+    int card_type = SD_CARD;
+    uint32_t hcs = 0;
+    int init_clock = SD_ID_MODE_CLOCK;
+    
+    writel(CMD_SDC_RST, SDC_CMD_REG);   /* reset SDC */
+    sdc->rca = 0;
+
+    /* wait reset done */
+    for (i = 0; i < 10*1000; i++ ) {    /* no more than 10 ms */
+        if ((readl(SDC_CMD_REG) & CMD_SDC_RST) == 0) {
+            reset = 1;
+            break;
+        }
+        usleep(1);
+    }
+
+    if (!reset) {
+        dbg(2, "reset sdc timeout\n");
+        return -ENODEV;
+    }
+
+   
+    if (!sd)
+        init_clock = MMC_ID_MODE_CLOCK;
+
+    /* enable clock */
+    clkdiv = (sys_ahb_clk + 2*init_clock - 1)/(2*init_clock) - 1;
+//dbg(0, "clkdiv = %x sd_clk = %d\n", clkdiv, sys_ahb_clk/(2*(clkdiv+1)));
+    if (sd) {
+        writel(CLK_SD | clkdiv, SDC_CLOCK_CTRL_REG); /* SD and SD default clock enable */
+        writel(BUS_WIDTH_1, SDC_BUS_WIDTH_REG);
+    } else {
+        writel(clkdiv, SDC_CLOCK_CTRL_REG);          /* MMC and MMC default clock enable */
+        writel(BUS_WIDTH_1, SDC_BUS_WIDTH_REG);
+    }
+
+    /* step 0 reset SD Card */
+    rc = sdc_sendcmd(sdc, CMD(0), 0, NR, NULL);
+    if (rc < 0)
+        goto EXIT;
+
+    if (sd) {
+        sdc->card.sd_ver = 10;
+        /* send cmd8 to get sd phys ver */
+        rc = sdc_sendcmd(sdc, CMD(8), (1 <<8) | 0x5a, QUITE(R7), &rsp);
+        if (rc == 0) {
+            assert(rsp == ((1 << 8) | 0x5a));
+            sdc->card.sd_ver = 20;
+            hcs = 1 << 30;
+        }
+    }
+
+
+    /*
+     * Card Identification Mode 
+     */
+    
+    /* step2 ACMD41(SD) or CMD1(MMC) ask the card to send its OCR and wait power up */
+    for (i = 0; i < 5000; i++) { /* no more than 1 sec */
+        if (i == 600) {
+            printf("reset again\n");
+            rc = sdc_sendcmd(sdc, CMD(0), 0, NR, NULL);
+            if (rc < 0)
+                goto EXIT;
+        }
+
+        if (sd) {
+            rc = sdc_sendcmd(sdc, ACMD(41), (hcs | 0xff8000), QUITE(R3), &rsp);
+            if (rc < 0) {
+                /* card don't known ACMD41 try MMC again */
+                goto EXIT;
+            }
+        } else {
+            rc = sdc_sendcmd(sdc, CMD(1), 0xff8000, QUITE(R3), &rsp);
+            if (rc < 0) 
+                goto EXIT;
+        }
+
+        if (rsp & SD_OCR_POWER_UP) { /* sd or mmc card is power up */
+            powerup = 1;
+            break;
+        }
+        usleep(5);
+    }
+
+    if (! powerup) {
+        dbg(2, "%s Power up not ready, OCR %08lx\n", (sd) ? "SD" : "MMC", rsp);
+        goto EXIT;
+    }
+
+    if (sd && sdc->card.sd_ver >= 20) {
+        if (rsp & (1 << 30)) {
+            card_type = SDHC_CARD;
+        }
+    }
+
+
+
+    /* step3 CMD2 to get CID */
+    rc = sdc_sendcmd(sdc, CMD(2), 0, R2, sdc->card.cid);
+    if (rc < 0 && sd) {
+        dbg(2, "failed to get ALL CID (CMD2)\n");
+        goto EXIT;
+    }
+    
+   
+    /* step4 CMD3(SD) get RCA, or CMD3(MMC) set RCA */
+    if (sd) {
+        rc = sdc_sendcmd(sdc, CMD(3), 0, R6, &rca);
+    } else {
+        rca = rand() & 0xffff0000;
+        if (rca == 0) rca = 1 << 16;
+        rc = sdc_sendcmd(sdc, CMD(3), rca, R6, (uint32_t *)&rsp);
+    }
+    if (rc < 0) {
+        dbg(2, "failed to get/set RCA (CMD3)\n");
+        goto EXIT;
+    }
+    
+    sdc->card.type = (sd) ? card_type : MMC_CARD;
+    sdc->rca = (rca & 0xffff0000);
+
+    return 0;
+
+
+EXIT:
+    return -ENODEV;
+}
+
+
+static int sdc_carddetected(sdc_t *sdc)
+{
+    return (readl(GPIO_LEVEL) & SD_CARDDECT) ? -ENODEV : 0;
+}
+
+
+
+/* setup sd dma */
+static int setup_dma(sdc_t *sdc, int read, void *data, int dsize)
+{
+    unsigned long cfg;
+    unsigned long src, dst;
+    unsigned long csr;
+    int len;
+    void *buf;
+
+    assert(data != NULL );
+    assert((dsize & 0x3) == 0);
+
+    writel(1, DMA_CSR);    /* both AH0, AH1 are little endian, enable dma */
+    writel(1 << DMA_SD, DMA_INT_TC_CLR);  /* clear TC and INT */
+    writel(ERRABT << DMA_SD, DMA_ERRABT_CLR); /* clear err abort INT */
+    //writel(1 << DMA_SD, DMA_SYNC);
+
+
+    buf = data;
+    len = dsize / 4;
+
+    if (read) {
+        cfg = SRC_HE | SRC_CH(DMA_SD) | 0x7;
+        src = virt_to_phys(SDC_DATA_WINDOW_REG);
+        dst = virt_to_phys(buf);
+        csr = CSR_BURST_4 | CSR_READ | CSR_SRC_FIX | CSR_DST_INC | CSR_SRC_W32 | CSR_DST_W32 | CSR_HWH;
+    } else {
+        cfg = DST_HE | DST_CH(DMA_SD) | 0x7;
+        src = virt_to_phys(buf);
+        dst = virt_to_phys(SDC_DATA_WINDOW_REG);
+        csr = CSR_BURST_4 | CSR_WRITE | CSR_SRC_INC | CSR_DST_FIX | CSR_SRC_W32 | CSR_DST_W32 | CSR_HWH;
+    }
+
+
+    writel(csr, DMA_CH_CSR(DMA_SD));
+    writel(cfg, DMA_CH_CFG(DMA_SD));
+    writel(src, DMA_CH_SrcAddr(DMA_SD));
+    writel(dst, DMA_CH_DstAddr(DMA_SD));
+    writel(len, DMA_CH_SIZE(DMA_SD));
+    writel(0, DMA_CH_LLP(DMA_SD));
+
+#if 0
+    dma_cache_wback_inv(data, dsize);
+#else
+    flush_dcache_all();
+#endif
+    do {} while(0);
+
+    writel(csr | CSR_CH_EN, DMA_CH_CSR(DMA_SD));
+
+#if 0
+printf("%08x=%08x %08lx\n", DMA_CH_CFG(DMA_SD), readl(DMA_CH_CFG(DMA_SD)), cfg);
+printf("%08x=%08x\n", DMA_CH_SrcAddr(DMA_SD), readl(DMA_CH_SrcAddr(DMA_SD)));
+printf("%08x=%08x %08lx\n", DMA_CH_DstAddr(DMA_SD), readl(DMA_CH_DstAddr(DMA_SD)), dst);
+printf("%08x=%08x %08x\n", DMA_CH_SIZE(DMA_SD), readl(DMA_CH_SIZE(DMA_SD)), len);
+printf("%08x=%08x\n", DMA_CH_LLP(DMA_SD), readl(DMA_CH_LLP(DMA_SD)));
+printf("%08x=%08x %08lx\n", DMA_CH_CSR(DMA_SD), readl(DMA_CH_CSR(DMA_SD)), csr | CSR_CH_EN );
+#endif
+
+    return 0;
+
+}
+
+static int sdc_stop_transmission(sdc_t *sdc)
+{
+    int rc;
+    uint32_t cardstatus;
+
+    rc = sdc_sendcmd(sdc, CMD(12), 0, R1, &cardstatus);
+    if (rc < 0) 
+        return -EIO;
+    
+    return 0;
+}
+
+static int sd_probe(void *hcard)
+{
+    int rc;
+    int lrc = -1;
+    sdc_t *sdc = (sdc_t *)hcard;
+    uint32_t    cardstatus;
+    int         bus_width;
+    int         div = 0;
+    int         clk;
+    uint32_t    *scr;
+
+    assert(sdc->magic == MAGIC_SDC);
+
+// printf("sd_init %d\n", sdc->active);
+    if (sdc->active)
+        return 0;
+
+    /* check card inserted */
+    rc = sdc_carddetected(sdc);
+    if (rc < 0) {
+        lrc = -ENODEV;
+        goto EXIT;
+    }
+
+    sdc->data_err = sdc->rsp_crc_err = sdc->rsp_timeout_err = 0;   /* reset statistic */
+    sdc->read = sdc->write = 0;
+/*T582 not use GPIO to control SD power now. (Kevin 2014/01/28)*/
+//#ifdef CONFIG_ALWAYS_SD_POWER_ON
+//    writel(SD_POWER, GPIO_CLEAR);     /* power on SD */
+//#else
+//    writel(SD_POWER, GPIO_SET);     /* power on SD */
+//    usleep(10);
+//    writel(SD_POWER, GPIO_CLEAR);     /* power on SD */
+//#endif 
+
+
+    /* select sd card */
+    card_select(CARD_SEL_SD);
+    
+    rc = sdc_reset(sdc, 1);     /* try SD card first */
+    if (rc < 0) {
+        rc = sdc_reset(sdc, 0); /* try MMC card again */
+    }
+
+    if (rc < 0) {
+        dbg(2, "can't identified both SD and MMC\n");
+        lrc = -ENODEV;
+        goto EXIT;
+    }
+
+    /* 
+     * Enter Data Transfer Mode - Standby State
+     */
+
+    /* step5 CMD9 get CSD */
+    rc = sdc_sendcmd(sdc, CMD(9), sdc->rca, R2, sdc->card.csd);
+    if (rc < 0) {
+        dbg(2, "failed to get CSD\n");
+        lrc = rc;
+        goto EXIT;
+    }
+
+
+    /* step6 CMD10 to get rca's CID */
+    rc = sdc_sendcmd(sdc, CMD(10), sdc->rca, R2, sdc->card.cid);
+    if (rc < 0) {
+        dbg(2, "failed to get CID\n");
+        lrc = rc;
+        goto EXIT;
+    }
+
+    // sdc_cid_parse(sdc, cid);
+    sdc_csd_parse(sdc, sdc->card.csd, &div);
+
+    /* reprogram clock */
+    clk = readl(SDC_CLOCK_CTRL_REG);
+    clk = (clk & ~CLK_DIV_MASK) | div;
+//dbg(0, "div 0x%x div 0x%x sd_clk %d \n", clk, div, sys_ahb_clk/(2*(div+1)));
+    writel(clk, SDC_CLOCK_CTRL_REG);
+
+    /* 
+     * Enter Data Transfer Mode - Transfer State
+     */
+
+    /* read SCR from card */
+    /* step 7 CMD7 to select card */
+    rc = sdc_sendcmd(sdc, CMD(7), sdc->rca, R1, &cardstatus);
+    if (rc < 0) {
+        lrc = -EIO;
+        goto EXIT;
+    }
+
+    /* clear card detect pull high */
+    if (sdc->card.type == SD_CARD) {
+        rc= sdc_sendcmd(sdc, ACMD(42), 0, R1, &cardstatus);
+        if (rc < 0) {
+            lrc = -EIO;
+            goto EXIT;
+        }
+    }
+
+    /* program bus width */
+
+    if (readl(SDC_BUS_WIDTH_REG) & WIDE_BUS_SUPPORT && !sdc->one_bit_mode) {
+        if (sdc->card.type != MMC_CARD) {
+#if 0
+            rc = sdc_setblksize(sdc, 8);
+            if (rc < 0) {
+                dbg(2, "failed to set transfer size %d\n", rc);
+                lrc = rc;
+                goto EXIT;
+            }
+#endif
+        
+            writel(MAXTIMEOUT*2, SDC_DATA_TIMER_REG);
+            writel(8, SDC_DATA_LEN_REG);
+            writel(BLK_SIZE_8 | DATA_READ | DATA_EN, SDC_DATA_CTRL_REG);
+            
+            /* ACMD51 SCR, read the SD Configuration Register */
+            rc = sdc_sendcmd(sdc, ACMD(51), 0, R1, &cardstatus);
+            if (rc < 0) {
+                lrc = -EIO;
+                goto EXIT;
+            }
+        
+            scr = sdc->card.scr;
+            rc = sdc_pioread(sdc, scr, 8);
+            if (rc < 0) {   
+                dbg(2, "failed to read scr data %d\n", rc);
+            } else {
+                bus_width = (scr[0] >> 8) & 0x0f;
+                if (bus_width & 0x04) { /* support bus_width 4 */
+                    rc = sdc_sendcmd(sdc, ACMD(6), 2, R1, &cardstatus);
+                    if (rc < 0) {
+                        lrc = -EIO;
+                        goto EXIT;
+                    }
+                    writel(BUS_WIDTH_4, SDC_BUS_WIDTH_REG);
+                }
+            }
+        } else { /* mmc use cmd6 to set bus width */
+
+            /* Because MMC spec 4.0 use DAT0 to singal busy state when R1b responsed
+             * The faraday doesn't check DAT0 to wait R1b response. The CMD6 may not
+             * support by faraday SD controller (Jedy 2007/04/13)
+             */
+            uint32_t arg;
+            arg = (3 << 24) | (183 << 16) | (1 << 8);
+            rc = sdc_sendcmd(sdc, CMD(6), arg, R1, &cardstatus);
+            if (rc == 0) {
+                writel(BUS_WIDTH_4, SDC_BUS_WIDTH_REG);
+            }
+        }
+    }
+
+    /* record write_protect bit */
+    sdc->wp = 0;
+    sdc->active = 1;
+
+    return 0;
+EXIT:
+    sdc->active = 0;
+    writel(0x1ff, SDC_CLOCK_CTRL_REG);   /* disable SD clock */
+    writel(BUS_WIDTH_1, SDC_BUS_WIDTH_REG);
+    writel(CMD_SDC_RST, SDC_CMD_REG);   /* reset SDC */
+/*T582 not use GPIO to control SD power now. (Kevin 2014/01/28)*/
+//#ifndef CONFIG_ALWAYS_SD_POWER_ON
+//   writel(SD_POWER, GPIO_SET);         /* power off SD */
+//#endif
+
+    return lrc;
+
+}
+
+static int sd_remove(void *hcard)
+{
+    sdc_t *sdc = (sdc_t *)hcard;
+
+    assert(sdc->magic == MAGIC_SDC);
+
+
+    sdc->active = 0;
+
+    writel(0x1ff, SDC_CLOCK_CTRL_REG);  /* disable SD clock */
+    writel(BUS_WIDTH_1, SDC_BUS_WIDTH_REG);
+    writel(CMD_SDC_RST, SDC_CMD_REG);   /* reset SDC */
+/*T582 not use GPIO to control SD power now. (Kevin 2014/01/28)*/
+//#ifndef CONFIG_ALWAYS_SD_POWER_ON
+//    writel(SD_POWER, GPIO_SET);     /* power off SD */
+//#endif
+
+    return 0;
+}
+
+
+
+enum {
+    SD_ST_IDLE      = 0,
+    SD_ST_READY     = 1,
+    SD_ST_IDENT     = 2, 
+    SD_ST_STBY      = 3, 
+    SD_ST_TRAN      = 4, 
+    SD_ST_DATA      = 5, 
+    SD_ST_RCV       = 6, 
+    SD_ST_PRG       = 7, 
+    SD_ST_DIS       = 8
+};
+
+
+static int  sdc_until_transfer_state(sdc_t *sdc, int *pstate)
+{
+    uint32_t cardstatus;
+    int rc, lrc = -1;
+    int state;
+
+    for (;;) {
+        rc = sdc_sendcmd(sdc, CMD(13), sdc->rca, R1, &cardstatus);
+        if (rc < 0) {
+            lrc = -EIO;
+            goto EXIT;
+        }
+
+        state = (cardstatus >> 9) & 0x0f;
+        if (pstate) *pstate = state;
+        
+        if (state == SD_ST_TRAN)
+            return 0;
+
+        if (state == SD_ST_IDLE || state == SD_ST_READY || state == SD_ST_IDENT ||
+            state == SD_ST_STBY || state == SD_ST_DIS) {
+            printf("until transfer state but state = %d\n", state);
+            return 1;
+        }
+
+        usleep(1);
+    }
+    
+EXIT:
+    return lrc;    
+
+}
+
+
+
+#define MAX_MULTIBLOCK_NUM      126
+
+/*
+ * SD Card Read/Write/Erase Function
+ */
+static int sdc_read_blocks(sdc_t *sdc, uint32_t start, int bsize, int count, char *buf) 
+{
+    int timeout = sdc->card.readtimeout;
+    int dsize = bsize * count;
+    int rc;
+    int lrc = -1;
+    int status = 0;
+    uint32_t cardstatus;
+    uint32_t err, tc;
+    int i;
+    // int bl = sdc->card.read_bl_len;
+    int need_stop = 0;
+    int done = 0;
+    int tryi;
+
+// dbg(2, "read blocks %d %d\n", start, count);
+
+    sdc_until_transfer_state(sdc, NULL);
+
+
+    for (tryi = 0; tryi < 3; tryi++) {
+        /* stop dma transfer */
+        writel(CSR_ABORT, DMA_CH_CSR(DMA_SD));
+
+        if (sdc->multi_dma)
+        	rc = setup_dma_multi(sdc, 1, buf, dsize);
+		else
+			rc = setup_dma(sdc, 1, buf, dsize);
+        if (rc < 0) {
+            dbg(2, "failed to setup dmp %d\n", rc);
+            lrc = rc;
+            goto EXIT;
+        }
+
+        writel(timeout*2, SDC_DATA_TIMER_REG);
+        writel(dsize, SDC_DATA_LEN_REG);
+        // writel(bl | DATA_READ | DATA_DMA | DATA_EN, SDC_DATA_CTRL_REG);
+        writel(BLK_SIZE_512 | DATA_READ | DATA_DMA | DATA_EN, SDC_DATA_CTRL_REG);
+    
+        if (count > 1) { /* JEDY  beware of 2GB count may be >= 2 */
+            rc = sdc_sendcmd(sdc, CMD(18), start, R1, &cardstatus);
+            if (rc < 0) {
+                lrc = -EIO;
+                goto EXIT;
+            }
+            need_stop = 1;
+        } else {
+            rc = sdc_sendcmd(sdc, CMD(17), start, R1, &cardstatus);
+            if (rc < 0) {
+                lrc = -EIO;
+                goto EXIT;
+            }
+        }
+
+        /* wait until data transfer end */
+        for (i = 0; i < 10000*count; i++) { /* wait no more 1 ms */
+            status = readl(SDC_STATUS_REG);
+            if (status & (STATUS_DATA_TIMEOUT | STATUS_DATA_END | STATUS_DATA_CRC_FAIL))
+                break;
+            usleep(1);
+        }
+
+        if (status & STATUS_DATA_TIMEOUT) {
+            dbg(2, "read data timeout %x\n", status);
+            lrc = -EIO;
+            goto EXIT;
+        } else if (status & STATUS_DATA_CRC_FAIL) {
+            sdc->data_err++;
+            if (need_stop)
+                sdc_stop_transmission(sdc); 
+            continue;
+        } else if ((status & (STATUS_DATA_CRC_OK | STATUS_DATA_END)) == (STATUS_DATA_CRC_OK | STATUS_DATA_END)) {
+            done = 1;
+            break; /* should be ok */
+        }
+
+       dbg(2, "try again:: read block status = %x\n", status);
+
+        /* otherwise try again */
+    }
+
+    if (!done) {
+        dbg(2, "sdc_read_blocks:%d-%d too may tries status = %x (state=%s)\n", (int)start, (int)count, (int)status, get_state(sdc));
+        lrc = -EIO;
+        goto EXIT;
+    }
+
+    /* wait until dma done */
+    for (i = 0; i < (10*1000); i++) {  /* no more 10 ms */
+        tc = readl(DMA_TC);
+        if (tc & (1 << DMA_SD)) 
+            break;
+
+        err = readl(DMA_ERRABT);
+        if (err & (ERRABT << DMA_SD)) {
+            dbg(2, "DMA error or abort when read sd block %lx\n", err);
+            lrc = -EIO;
+            goto EXIT;
+        }
+        
+        usleep(1);
+    }
+
+    writel(1 << DMA_SD, DMA_INT_TC_CLR);  /* clear TC and INT */
+    writel(ERRABT << DMA_SD, DMA_ERRABT_CLR); /* clear err abort INT */
+
+    if (need_stop) {
+        rc = sdc_stop_transmission(sdc);
+        if (rc < 0) 
+            dbg(2, "Failed to stop transmission %d\n", rc);
+    }        
+
+
+    sdc_until_transfer_state(sdc, NULL);
+    
+    sdc->read += count;
+
+
+    return 0;
+
+EXIT:
+    if (need_stop)
+        sdc_stop_transmission(sdc);
+
+    return lrc;
+}
+
+static int sd_read_sector(void *hcard, int startsector, 
+        int sectorcount, int sectorsize, char *buf)
+{
+    sdc_t *sdc = (sdc_t *)hcard;
+    int rc;
+    int lrc = -1;
+    int blocksize;
+    int blockcount;
+    int blocks_per_sector;
+    int nblock;
+    int startblock;
+    uint32_t start;
+
+    assert(sdc->magic == MAGIC_SDC);
+
+    if (!sdc->active) {
+        lrc = -ENODEV;    
+        goto EXIT;
+    }
+
+    if (sdc_carddetected(sdc) < 0) {
+        lrc = -ENODEV;
+        goto EXIT;
+    }
+
+    /* select sd card */
+    card_select(CARD_SEL_SD);
+
+    blocksize = 512; // sdc->card.rblksize;
+    if (blocksize > sectorsize) {
+        dbg(2, "invalid sector size %d (block %d)\n", sectorsize, blocksize);
+        goto EXIT;
+    }
+
+    blocks_per_sector = sectorsize / blocksize;
+    blockcount = sectorcount * blocks_per_sector;
+    startblock = startsector * blocks_per_sector;
+
+    if (sdc->card.type == SDHC_CARD) {
+        start = startblock;
+    } else {
+        start = startblock * blocksize;
+    }
+    
+    while(blockcount > 0) {
+        nblock = (blockcount > MAX_MULTIBLOCK_NUM) ? MAX_MULTIBLOCK_NUM : blockcount;
+        rc = sdc_read_blocks(sdc, start, blocksize, nblock, buf);
+        if (rc < 0) {
+            lrc = rc;
+            dbg(2, "failed to sdc_read_blocks (%d-%d) %d\n", startsector, sectorcount, rc);
+            goto EXIT;
+        }
+
+        blockcount -= nblock;
+
+        if (sdc->card.type == SDHC_CARD) {
+            start += nblock;
+        } else {
+            start += (nblock * blocksize);
+        }
+        
+        buf += (nblock * blocksize);
+    }
+    
+    return 0;
+
+EXIT:
+    if (sdc_carddetected(sdc) < 0) 
+        sd_remove(sdc);
+    
+
+    return lrc;
+
+}
+
+static int sdc_write_blocks(sdc_t *sdc, uint32_t start, int bsize, int count, char *buf) 
+{
+    int timeout = sdc->card.writetimeout;
+    int dsize = bsize * count;
+    int rc;
+    int lrc = -1;
+    int status;
+    uint32_t cardstatus;
+    uint32_t err, tc;
+    int i;
+    // int bl = sdc->card.write_bl_len;
+    int need_stop = 0;
+
+    sdc_until_transfer_state(sdc, NULL);
+
+
+    /* stop dma transfer */
+    writel(CSR_ABORT, DMA_CH_CSR(DMA_SD));
+    
+    if (sdc->multi_dma)
+    	rc = setup_dma_multi(sdc, 0, buf, dsize);
+    else
+    	rc = setup_dma(sdc, 0, buf, dsize);    	
+    if (rc < 0) {
+        dbg(2, "failed to setup dmp %d\n", rc);
+        lrc = rc;
+        goto EXIT;
+    }
+
+    writel(timeout*2, SDC_DATA_TIMER_REG);
+    writel(dsize, SDC_DATA_LEN_REG);
+    writel(BLK_SIZE_512 | DATA_WRITE | DATA_DMA | DATA_EN, SDC_DATA_CTRL_REG);
+
+    if (count > 1) {
+        rc = sdc_sendcmd(sdc, CMD(25), start, R1, &cardstatus);
+        if (rc < 0) {
+            lrc = -EIO;
+            goto EXIT;
+        }
+        need_stop = 1;
+    } else {
+        rc = sdc_sendcmd(sdc, CMD(24), start, R1, &cardstatus);
+        if (rc < 0) {
+            lrc = -EIO;
+            goto EXIT;
+        }
+    }
+
+
+    /* wait until data transfer end */
+    for (;;) {
+        status = readl(SDC_STATUS_REG);
+        if (status & (STATUS_DATA_TIMEOUT | STATUS_DATA_CRC_FAIL)) {
+            dbg(2, "write data transfer timeout status = %x\n", status);
+            lrc = -EIO;
+            goto EXIT;
+        } else if ((status & (STATUS_DATA_CRC_OK | STATUS_DATA_END)) == (STATUS_DATA_CRC_OK | STATUS_DATA_END)) {
+            break;
+        }
+        usleep(1);
+    }
+
+
+    if (need_stop) {
+        rc = sdc_stop_transmission(sdc);
+        if (rc < 0) 
+            dbg(2, "Failed to stop transmission %d\n", rc);
+    }
+
+    /* wait until dma done */
+    for (i = 0; i < (10*1000); i++) {  /* no more 10 ms */
+        tc = readl(DMA_TC);
+        if (tc & (1 << DMA_SD)) 
+            break;
+
+        err = readl(DMA_ERRABT);
+        if (err & (ERRABT << DMA_SD)) {
+            dbg(2, "DMA error or abort when read sd block %lx\n", err);
+            lrc = -EIO;
+            goto EXIT;
+        }
+    
+        usleep(1);
+    }
+
+    writel(1 << DMA_SD, DMA_INT_TC_CLR);  /* clear TC and INT */
+    writel(ERRABT << DMA_SD, DMA_ERRABT_CLR); /* clear err abort INT */
+
+    sdc_until_transfer_state(sdc, NULL);
+
+    sdc->write += count;
+
+    return 0;
+
+EXIT:
+    if (need_stop) 
+        sdc_stop_transmission(sdc);
+
+    return lrc;
+}
+
+static int sd_write_sector(void *hcard, int startsector, int sectorcount, 
+    int sectorsize, char *buf)
+{
+    sdc_t *sdc = (sdc_t *)hcard;
+    int rc;
+    int lrc = -1;
+    int blocksize;
+    int blockcount;
+    int blocks_per_sector;
+    int nblock;
+    int startblock;
+    uint32_t start;
+
+    assert(sdc->magic == MAGIC_SDC);
+    if (!sdc->active) {
+        lrc = -ENODEV;    
+        goto EXIT;
+    }
+
+    if (sdc_carddetected(sdc) < 0) {
+        lrc = -ENODEV;
+        goto EXIT;
+    }
+
+    /* select sd card */
+    card_select(CARD_SEL_SD);
+
+    blocksize = 512; // sdc->card.wblksize;
+    if (blocksize > sectorsize) {
+        dbg(2, "invalid sector size %d (block %d)\n", sectorsize, blocksize);
+        goto EXIT;
+    }
+    blocks_per_sector = sectorsize / blocksize;
+    blockcount = sectorcount * blocks_per_sector;
+    startblock = startsector * blocks_per_sector;
+    if (sdc->card.type == SDHC_CARD) {
+        start = startblock;
+    } else {
+        start = startblock * blocksize;
+    }
+
+
+    while(blockcount > 0) {
+        nblock = (blockcount > MAX_MULTIBLOCK_NUM) ? MAX_MULTIBLOCK_NUM : blockcount;
+        rc = sdc_write_blocks(sdc, start, blocksize, nblock, buf);
+        if (rc < 0) {
+            dbg(2, "failed to sdc_write_blocks (%d-%d) %d\n", startsector, sectorcount, rc);
+            lrc = rc;
+            goto EXIT;
+        }
+
+        blockcount -= nblock;
+        if (sdc->card.type == SDHC_CARD) {
+            start += nblock;
+        } else {
+            start += (nblock * blocksize);
+        }
+        buf += (nblock * blocksize);
+    }
+
+    return 0;
+
+EXIT:
+
+    if (sdc_carddetected(sdc) < 0) 
+        sd_remove(sdc);
+
+    return lrc;
+}
+
+static int sd_erase_sector(void *hcard, int startsector, 
+    int sectorcount, int sectorsize)
+{
+    
+    return 0;
+}
+
+
+
+
+
+drive_op_t sd_op = {
+    init_card:      sd_probe,
+    release_card:   sd_remove,
+    read_sector:    sd_read_sector,
+    write_sector:   sd_write_sector,
+    erase_sector:   sd_erase_sector, 
+};
+
+#define SD_DISK         'A'
+
+int sd_disk_insert(sdc_t *gSDC)
+{
+    int rc;
+    printf("\nSD/MMC Card Inserted\n");
+/*T582 not use GPIO to control SD power now. (Kevin 2014/01/28)*/    
+//    writel(SD_POWER, GPIO_CLEAR);     /* power on SD */
+    rc = drive_insert(SD_DISK);
+    if (rc < 0 && gSDC->one_bit_mode != 2) {
+        printf("Try SD 1 bit mode\n");
+        gSDC->one_bit_mode = 2;
+        drive_insert(SD_DISK);
+    }
+
+
+    return 0;
+}
+
+int sd_disk_remove(sdc_t *gSDC)
+{
+    printf("\nSD/MMC Card Removed\n");
+    drive_remove(SD_DISK);
+/*T582 not use GPIO to control SD power now. (Kevin 2014/01/28)*/
+//#ifndef CONFIG_ALWAYS_SD_POWER_ON
+//    writel(SD_POWER, GPIO_SET);       /* power off SD */
+//#endif
+
+    if (gSDC->one_bit_mode == 2)
+        gSDC->one_bit_mode = 0;
+
+    return 0;
+}
+
+
+void sd_drv_init(sdc_t *gSDC)
+{
+//    int rc;
+    uint32_t oe;
+    char dname = SD_DISK;
+    
+    memset(gSDC, 0, sizeof(sdc_t));
+    gSDC->magic = MAGIC_SDC;
+
+    FileSysTable[dname - SD_DISK] = &gSDC->fs; 
+    drive_op(&gSDC->fs, &sd_op, (void *)gSDC); 
+    DriveDescTable[dname - SD_DISK] = "sd disk"; 
+#if 0 // sherman test ...
+    rc = enable_carddect_irq(SD_CARDDECT);
+    if (rc < 0) {
+        printf("sd driver init, failed to enable carddect irq\n");
+    }
+#endif
+
+#if 1 // sherman test ...
+	gSDC->dma = DMA_SD;
+	//gSDC->lld = (struct slld_t *)malloc(sizeof(struct slld_t) * MAX_LLD_NUM);
+#endif
+/*T582 not use GPIO to control SD power now. (Kevin 2014/01/28)*/
+//    oe = SD_POWER | readl(GPIO_OE);
+//    writel(oe, GPIO_OE);
+
+//#ifdef CONFIG_ALWAYS_SD_POWER_ON
+//    writel(SD_POWER, GPIO_CLEAR);       /* power on SD */
+//#else
+//    writel(SD_POWER, GPIO_SET);         /* power off SD */
+//#endif
+
+#if 0 // sherman test ...
+    if ((readl(GPIO_LEVEL) & SD_CARDDECT)) 
+        sd_disk_remove(gSDC);
+    else 
+        sd_disk_insert(gSDC);
+#endif
+
+#if 1 // sherma test ...
+	gSDC->multi_dma = 1;
+#endif 
+}
+
+//drive_init(sd_drv_init)
+
+
+

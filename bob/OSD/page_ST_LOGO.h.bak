@@ -1,0 +1,9 @@
+#ifndef __page_ST_LOGO_MENU_H__
+#define __page_ST_LOGO_MENU_H__
+
+extern unsigned char page_ST_LOGO_process (TW_EVENT* event);
+extern struct tw_td const layout_1_st_logo;
+extern struct tw_menu const	page_st_logo_osd2_0_menu;
+//rom_font_1
+extern struct tw_icons const page_st_logo_rom_font_1;
+#endif

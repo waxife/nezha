@@ -1,0 +1,8 @@
+Setting .config
+===============
+
+CONFIG_TTL_PANEL=n  (disabling TTL implies enabling I80)
+
+CONFIG_ILI9320=y    (if connect to ILI9320 panel)
+CONFIG_ILI9327=y    (if connect to ILI9327 panel)
+CONFIG_HX8347B=y    (if connect to HX8347B panel)

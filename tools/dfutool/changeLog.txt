@@ -1,0 +1,21 @@
+ChangeLog
+=======
+v1.29 2014/03/10
+--------------------
+1.Fixed ui bug
+2.Added SPI Function
+3.Added adaptive speed adjust for I2C and SPI
+
+v1.28 2014/01/24
+--------------------
+1.Fixed i2c clock speed parameters to 400khz
+
+v1.27 2014/01/20
+---------------------
+1. Fixed xp can't browse the resource directory
+2. Fixed registry can't be read back for winxp and vista
+
+v1.26 2014/01/17
+---------------------
+1. Change ui interface
+2. Renew the progress bar while the chip erase is executed

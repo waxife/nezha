@@ -1,0 +1,5 @@
+#
+# makefile globals variables
+#
+
+IGNORE_JUNITY_FAIL=1

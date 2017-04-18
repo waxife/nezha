@@ -1,0 +1,87 @@
+#!/bin/bash
+
+#
+# @file setenv
+# @brief project environment setup script
+# $Id: setenv,v 1.5 2014/07/02 05:26:49 jedy Exp $
+# $Author: jedy $
+# $Revision: 1.5 $
+#
+# Copyright (c) 2006 Terawins Inc. All rights reserved.
+#
+# @date 2006/12/20 New file
+# @date 2006/12/21 add CVS_SERVER variable and use ip instead of DNS
+#
+
+GCC_VER=3.4
+
+#
+# to check if this shell name is setenv
+#
+if [ "`basename $0`" != "setenv" ]; then
+	echo "It is not permitted to invoke \"setenv\" by other names"
+	exit 1
+fi
+
+if [ ! -d /opt/toolchain/sde ]; then
+    echo "Must install sde 3.4 toolchain before enter digframe project"
+    exit 1
+fi
+
+if [[ ! -f /etc/profile.d/sdeenv.sh && ! -f /opt/toolchain/sde/bin/sdeenv.sh ]]; then
+    echo "Require sdeenv.sh to setup sde 3.4 environment"
+    exit 1
+fi
+
+if [ "`gcc --version`" == "" ]; then
+    echo "gcc is requried, please install host gcc toolchain"
+    exit 1
+fi
+#
+# project-specifi settings
+#
+
+# project name
+PROJ_NAME="NEZHA"
+
+#
+# to check if this shell is executed from the project directory whose parent
+# directory name which is the same as project name
+#
+CUR_DIR="`readlink -fq .`"
+CUR_BASE="`basename ${CUR_DIR}`"
+
+# project top directory
+PROJ_ROOT=${CUR_DIR}
+PROJ_NEZHA_DIR=${PROJ_ROOT}
+
+# project development root
+# prefix of toolchain wrapper
+WRAPPER_PREFIX=sde-
+PROJ_DEVEL_ROOT=/opt/toolchain/sde
+
+# to add executable-lookup paths for this project
+PATH=${PROJ_DEVEL_ROOT}/bin:$PATH
+
+#
+# misc settings for the project shell iteself 
+#
+PS1="[\u@"${PROJ_ROOT##*/}-${GCC_VER}" \W]% "
+
+export PROJ_NAME PROJ_ROOT PROJ_NEZHA_DIR PROJ_DEVEL_ROOT PATH PS1
+
+echo -e "\n********************************************"
+echo -e "** Enter project $PROJ_NAME environment"
+echo -e "********************************************"
+echo PROJ_NEZHA_DIR=$PROJ_NEZHA_DIR
+echo PROJ_DEVEL_ROOT=$PROJ_DEVEL_ROOT
+echo PATH=$PATH
+echo -e "\nuse toolchain gcc $GCC_VER\n"
+
+if [ -f /etc/profile.d/sdeenv.sh ]; then
+    sh /etc/profile.d/sdeenv.sh
+elif [ -f /opt/toolchain/sde/bin/sdeenv.sh ]; then
+    sh /opt/toolchain/sde/bin/sdeenv.sh
+fi
+
+$BASH --login --rcfile ~/.bashrc

@@ -1,0 +1,16 @@
+/*
+ * @ __CONFIG_C
+ * Automatically generated C config: don't edit
+ */
+/* ## Compile and Make Option */
+const unsigned char config_debug=1;
+const unsigned long config_debug_level=2;
+/* # console enable */
+const unsigned char config_console_enable=1;
+const unsigned long config_sys_uart_baud=38400;
+/* # WDT timeout (millisecond) */
+/* #CONFIG_WATCHDOG_TIMEOUT=10000 */
+/* # nor flash layout */
+const char config_code_nor_layout[]="NOR=(64,0-63)";
+/* end __CONFIG_C  */
+

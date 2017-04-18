@@ -1,0 +1,43 @@
+ChangeLog
+=======
+v0.76 Beta 2016/02/26
+---------------------
+1. TWPlayer_v0_76_Beta.exe
+	- fixed AV Sync issue
+
+v0.75 Beta 2014/04/22
+---------------------
+1. TWPlayer_v0_75_Beta.exe
+	- fixed load file error (no av chunk)
+	- jpg file support
+	
+v0.74 Beta 2014/07/31
+---------------------
+1. TWPlayer_v0_74_Beta.exe
+	- auto play
+	- fixed audio play bug
+	- support g.726 audio
+	
+v0.73 Beta 2014/05/09
+---------------------
+1. TWPlayer_v0_73_Beta.exe
+	- fixed a/v sync 
+	
+v0.72 Beta 2014/04/01
+---------------------
+1. TWPlayer_v0_72_Beta.exe
+	- a/v sync issue 
+
+v0.71 Beta 2014/03/07
+---------------------
+1. TWPlayer_v0_71_Beta.exe
+	- fixed time display error
+	- fixed index value overflow
+	- file name transfer error
+	- added replay function
+	- added pause function
+	
+v0.70 Beta 2014/01/24
+---------------------
+1. TWPlayer_v0.70_Beta.exe
+	- init

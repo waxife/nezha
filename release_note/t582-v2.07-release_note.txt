@@ -1,0 +1,97 @@
+T582 SDK Nezha v2.07－Patch Release Node
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+1. 修正 mount readonly 造成 AP 無法判別是否要重新 format 的問題
+   ** _mount return < 0 error, = 0 normal mounted, =1 readonly mounted
+   ** _ismounted, return = 0 not mounted, =1 normal mounted, =2 readonly mounted
+   ** sdc_status, 增加 SDC_MOUNTED_READONLY state
+       - SDC_NONE      無卡
+       - SDC_INSERT    有卡無法 mount
+       - SDC_MOUNTED   有卡正常 mount
+       - SDC_MOUNTED_READONLY  有卡 readonly mount
+
+
+T582 SDK Nezha v2.07 Release Node
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+1. SD FAT 檔案系統擴充一個目錄可納檔案數
+   ** 2.07 和 2.06 以前格式化的 SD FAT 不相容，必需重新在2.07 格式化後才能寫檔
+   ** Directory 從 4 個 cluster 擴充到 5個 cluster。 可容納 1279個 長檔名檔案
+2. SD FAT 開放 mount 不相容格式的 FAT 為 readonly
+   ** 不相容格式的 SD format，（例如在 PC 上格式化的 SD Card) 再2.07 會 mount 成唯讀狀態
+   ** 唯讀狀態的檔案系統，無法 create file, makedir, delete file, rename file
+   ** 不是在 2.07 Create 的目錄，只會讀取到約 255 檔案 （一個 cluster 大小容納的 directory 個數）
+3. mconfig 修改
+   ** 擴充可保留檔案個數從 1023 新增為 1279
+   ** 當保留檔案為負數時， －1 和 2.06 定義相同。 -n 表示最多保留 n 個檔案。
+      例如 －128， 在 2G card 只能保留 45 個檔案。 
+      在 8G card 上 可以保留 179 個檔案， 但 －128 指示，所以只保留 128 個檔案
+4. 修正 enycatch.c & cvbs2.c 影片播放黑屏問題
+   ** 同步修改 codec_eng/playfile2 開屏的機制
+5. SD upgrade 後會先自動 reset
+   ** 同時修正 upgrade.sh 中若有亂碼無法正確工作的問題
+6. 提供 MEDIA_USER0, MEDIA_USER1 的 media type
+   ** 語音留言可以利用新增的 media type 分別不同的目錄存放室內留言和室外留言
+7. 提供 video duration property
+8. codec_eng/encpic, decpic 加入判斷不完整 picture 檔的機制，避免不正常關機後的不完整檔案造成系統不正常。
+
+
+T582 SDK Nezha v2.06 Release Node
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+
+1. SD FAT 檔案系統更動快取記錄在directory 的位置
+   ** 2.05 以前 Format 的 SD Card 在 Windows Vista 系統讀取後，快取資料會污染。
+   ** 2.06 FAT reserve file 和 2.05 並不相容。 2.05 以前 Format 的 SD Card 必需
+      在 2.06 重新 format。
+
+2. OSD2 提供 1bp/2bp osd2 canvas 功能，可以讓程序員調用 setpixel/getpixel api 直接畫點到 osd2 層上。
+   － TWOSDTool 也配合提供新增 osd2 canvas 物件
+   － 參考 app3 sample
+
+3. CodecEng/playfile2 增強播放影片的效能，提供更正確和穩定的影音同步。並且提供 option 讓影片播完後停留在最後一禎或直接結束的選擇。
+
+4. 程序碼 NOR Flash 啟動強制寫入保護。DFUTool 和 SD Upgrade 也配合修改。
+
+5. TWOSDTool 修正 rebuild resource 會造成 sprite 丟失的錯誤。
+
+6. 提供 CCIR656 input 制式偵測 以及 CVBS DTO 的微調
+
+7. GreenTool 提供 RTC 自動校正。 
+
+8. GreenTool 中屏參程序(iml) 依專案管理(project) 
+
+9. GreenTool 提供 1024x600 TTL 預設屏參
+
+10. 提供 GPIOA api 
+
+11. 提供 Touch panel repeat event
+
+12. 提供簡化的 app 架構範例
+    - app OSD logo
+    - app2 小形 task 架構範例 
+
+13. Terawins Video Player 修正影音同步問題
+
+T582 SDK Nezha v2.05 Release Node
+————————————————
+1. Motion Detection (Beta) : 新增 MD Task 及 Doorphone2 上 MD 的 Demo
+   - T582 Doorhone2 Demo.pdf 
+2. Interlace 抓拍 (Beta) : 提拱 480i/576i JPEG
+3. DFUTool ： 提供 SPI path 燒錄 Resource/Code flash。 SPI 提速度自動偵測功能
+4. File Browser : Doorphone2 提供 file browser demo。 ls 支援 markls/seekmarkls API 方便 ls page up/page down。
+5. Doorphone2 Setup page 增加頁面， Browser 開關， MD 開關, Touch panel 重新校正
+6. SDK 支援 i80 Panel，增加 drvier/i80， 支援 9320, 9327 like protocol 驅動
+   - 增加 disp_ili9327 / disp_ili9320 目錄提供 9320, 9327 屏參設定
+7. TWOSDTool 
+   - 修正 osd2 menu name 錯誤
+   - 修正 1bp, 2bp, 4bp 背景透明問題
+   - 改善外部 MCU resource data structure 問題
+8. TWPlayer 
+   - 修正 Time display error
+   - 新增 replay, pause 功能
+   - 修正一些 bugs
+9. 提供 34 bytes user info 給 SDK user 加入 user 資料到 video/jpeg 檔頭
+   －參考 4 Code Engine / enpic, recfile
+10. 修正 RTC health detection
+11. 增加 ring tong 設定從 0 到 16，修正鈴聲的轉換工具
+   － 新的鈴聲工具支援 G.726, a-law, u-law 格式並且加入檔頭
+12. 新的 .dfu.layout summary, 提供 ROM file , RAM file 的分配表
+13. 修正 upgrade.sh 提供多個物件加入 action 中同時升級

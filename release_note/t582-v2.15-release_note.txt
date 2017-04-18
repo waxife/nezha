@@ -1,0 +1,312 @@
+﻿T582 SDK Nezha v2.15 Release Node
+
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+1. 修正twfont閃爍Flag
+2. Codec, Recfile 修正jepg Quality 小於50計算問題
+3. Codec, playfile2 
+   3.1. reset frame no. when enter STOP_SOF state.
+   3.2. adds inline attribute at functions for performance
+   
+4. Update RT5350 of Drivers and App(for 華普 MLK045A)
+5. TWfont_v1_77: 增加Big5 與修正標點符號位置
+6. Tool TWOSDTool_T582_v1.58_Beta.exe
+    - reverse can't setting in filter mode
+    - tw font merge issue
+
+
+
+T582 SDK Nezha v2.14 Release Node
+
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+1. 修正 NORFS file ID overflow 65535 的問題。
+2. 修正 playfile 由 pause 到 resume play 有 drop frame 的影片會 A/V 不同步的問題。
+3. 修正SD Card 更新時 action value 超過9系統會出錯的問題
+4. 修正 twfonttool gb2232字形 逗號句號位置
+5. nzshell/shell/sh_ssd.c 增加ssd4, 測試10MB 16kbyte/Write 
+6. Touch panel 新增觸摸屏解析度選擇(10bit,11bit和12bit)
+7. 修改playfile2, play 狀態下不檢測 SD Card 狀態避免gpio 不穩定影響play
+8.  Tool TWOSDTool_T582_v1.57_Beta.exe
+    - fixed multi icon pointer error
+    - fixed exmcu out twicons output error
+
+
+
+T582 SDK Nezha v2.13 Release Node
+
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+1. Add reci80.c, i80 master and encode i80 drivers(Codec)
+2. Add doorphone2_wifi demo
+3. Adds rt5350 of drivers and App(nezha/net/)
+
+
+
+T582 SDK Nezha v2.12 Release Node
+
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+1. 修正錄像聲音格式重設問題。
+2. playfile2() 播放三種影片的 return code：
+    ( a ) 一般正常影片: CMD_STOP
+    ( b ) 可播放但是不完整的影片: CMD_STOP_ERR
+    ( c ) 完全無法播放的影片: CMD_QUIT_ERR
+    第 ( b )、( c ) 項播放結束無法停在最後一幀或第一幀。
+    可以使用 play_status() 取得可(已)播放 video frame number 來判斷是否要保留該影片。
+    - sys/include/command.h
+    - codec_eng/
+3. 修正 osd2-only mode tile data error
+
+4. Tool TWOSDTool_T582_v1.54_Beta.exe (2014/10/24)
+    - fixed 1bp tw font bg fg color error
+    - fixed osd2 menu delete error on page mode
+    - group icon data error
+
+5. Document
+    - 增加T582DB_Pin_default_value_GPIO_Pin.xls
+
+
+T582 SDK Nezha v2.11 Release Node
+
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+1. Tool TWOSDTool_T582_v1.52_Beta.exe
+ - support osd2 menu font tile full screen
+ - fix icon bigger than menu bug
+ - fix png file lock issue
+
+2. sys/include/norfs.h
+     libs/mconfig.c
+ - NORFS maximum file number 改成 256 
+
+3. Tool TWArt v1.35
+ - 增加裁切快捷鍵(Ctrl+X)
+ - 圖層視窗與工具列脫鉤
+ - 追加对切图命名的部分
+ - 自動導入切过的图
+
+4. TWTool v4.0.0.5
+ -  Fix Load iml 若有注解有時會解析錯誤問題
+ - 增加Gamma 存成壓縮模式, For T527 EEPROM版本使用
+ - 增加Gamma Table Read Back功能。
+ - T582 register writer自動補寫P0_FF=0.
+
+5. codec_eng/playfile.h
+   codec_eng/playfile2.c
+   shell/sh_playfile.c
+ - av_property 新增影片錄像時間欄位
+
+T582 SDK Nezha v2.10 Release Node
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+1.encpic2.c & encpic3.c
+- 修正Jpeg 有機會拍到異常畫面問題。
+ 
+2. drivers/cq/cq.c
+- 增加 CQ_WPORT_DELAY 定義值 (針對某些timing 下造成OSD2更新錯誤) 
+ 
+3. drivers/osd2/osd2.c
+- 修正某些情況下載入BG LUT太快造成異常
+ 
+4. drivers/spiosd/spiosd.c
+- 修正TWBC/PNG8 切換造成異常
+ 
+5. fat32 reserved directories
+- scan the broken link of double-linked list
+- rebuild the double-linked list
+- fat32 double-linked list 掃描(scan_dll) 與重建(rebuild_dll) 呼叫方式請參考
+  shell command scandir, rebuild (shell/sh_fat32.c)，以1024個檔案為例，
+  掃描時間為2.670秒，重建時間為12.170秒。掃描重建時注意關掉 watchdog
+
+
+T582 SDK Nezha v2.09 Release Node
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+1. Tool TWOSDTool_T582_v1.49_Beta.exe
+ - fixed 2bp display issue
+ - 2bp visible issue - 1bp visible issue
+ - fix line store size
+ - fix output file name
+ - 1bp fg/bg color reverse
+ - 1bp change image
+ - fix SPIOSD can't change image
+ 
+2. TWPlayer_v0_74_Beta.exe
+ - auto play
+ - fixed audio play bug
+ - support g.726 audio
+
+3. cvbs2.c
+ - Fix 656 in detect error.
+ - Fix CVBS no Color at some cvbs source.
+
+4. display.c
+ - Add Gamma Table and load Gamma Table
+
+5. decpic3 支援播放 128k fat/sd 圖片
+
+6. playfile2 支援 play_opt_t.start  與 play_opt_t.stop 選項
+
+7.encpic3.c 
+ -Support 128kbyte for sd card
+8.decpic2 :
+ -Filter error jpeg
+9.Calibration.c
+ -Fixed bitmap offset value
+  
+10. drivers/cq/cq.c
+ - 增加 CQ_WPORT_DELAY 定義值 (針對某些timing 下造成OSD2更新錯誤)  
+
+11.UartComm.exe
+ -add Unicode to GB2312 Send
+ 
+12.driver/upgrade/upgrade.c  ,  sys/sd_upgrade.c
+ -add earse nor flash
+ 
+13.app6
+ -GB2312 to Unicode demo  
+
+
+T582 SDK Nezha v2.08 Release Node
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+1. 修正 mount readonly 造成 AP 無法判別是否要重新 format 的問題
+   ** _mount return < 0 error, = 0 normal mounted, =1 readonly mounted
+   ** _ismounted, return = 0 not mounted, =1 normal mounted, =2 readonly mounted
+   ** sdc_status, 增加 SDC_MOUNTED_READONLY state
+       - SDC_NONE      無卡
+       - SDC_INSERT    有卡無法 mount
+       - SDC_MOUNTED   有卡正常 mount
+       - SDC_MOUNTED_READONLY  有卡 readonly mount
+2. 增加Codec 版本打印
+    ** 開機時 console 顯示 Nezha version 後面增加 codec version。
+
+3. SD upgrade 更新時間戳記。
+    ** 使用 sd_auto_upgrade_with_time_stamp 可以 upgrade 時帶入更新時間戳記儲存於系統中。
+    ** 使用 get_sd_upgrade_stamp 取得運行中系統的更新時間戳記值。
+    ** 使用 is_sd_upgrade_stamp_equal 判斷運行中的系統更新時間戳記是否與帶入的更新時間戳記值相等。
+
+4. 增加 doorphone2 的錄音格式和資料夾選擇
+    format: 4(G.726-32Kbits, recommend)
+    MEDIA: MEDIA_AUMSG
+    doorphone2/task/aumsg_service.c
+
+5. doorphone2 task 增加 reset signel of status
+    signel event 交由 page loop 處理
+    doorphone2/srv_evt_cmd.c
+    
+6. Tool TWOSDTool_T582_v1.48_Beta.exe
+   ** add osd2 menu font height 14
+   ** add osd2 menu rom font index
+   ** add rom font size & menu font size testing
+   ** fix 1bp icon (12x14) index data error  
+   ** add 1bp bit invert
+ 
+7.新增 norfs 目錄清除 api (norfs_cleandir, norfs_format_partition)
+
+8.提昇 playfile2 效能
+
+9.移除 playfile2 play_opt_t.stop=1 的支援 
+
+10. 增加iic_host driver
+
+11. 增加app5 -- iic host sample
+
+12. GREEN TOOL v0.81
+   **add serial port(Uart Bridge)
+   **add SPI CMD to inital panel
+   
+13. CVBS2.c
+   ** 加強cDTO設定方式, 加強cvbs訊號相容性。
+   
+14. display.c
+   **修正 app/disp/display.c, app2/disp/display.c, app3/disp/display.c, app4/disp/display.c
+     中Set Full mode 沒設定Channel Bug.  
+     
+15. 增加Motion Detect Demo Code (app4).
+
+16. 修正Touch Panel Eevent 連發問題
+
+17. 增加1bit Flash + OSD2 架構的 Resource Config.
+
+
+     
+
+T582 SDK Nezha v2.07 Release Node
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+1. SD FAT 檔案系統擴充一個目錄可納檔案數
+   ** 2.07 和 2.06 以前格式化的 SD FAT 不相容，必需重新在2.07 格式化後才能寫檔
+   ** Directory 從 4 個 cluster 擴充到 5個 cluster。 可容納 1279個 長檔名檔案
+2. SD FAT 開放 mount 不相容格式的 FAT 為 readonly
+   ** 不相容格式的 SD format，（例如在 PC 上格式化的 SD Card) 再2.07 會 mount 成唯讀狀態
+   ** 唯讀狀態的檔案系統，無法 create file, makedir, delete file, rename file
+   ** 不是在 2.07 Create 的目錄，只會讀取到約 255 檔案 （一個 cluster 大小容納的 directory 個數）
+3. mconfig 修改
+   ** 擴充可保留檔案個數從 1023 新增為 1279
+   ** 當保留檔案為負數時， －1 和 2.06 定義相同。 -n 表示最多保留 n 個檔案。
+      例如 －128， 在 2G card 只能保留 45 個檔案。 
+      在 8G card 上 可以保留 179 個檔案， 但 －128 指示，所以只保留 128 個檔案
+4. 修正 enycatch.c & cvbs2.c 影片播放黑屏問題
+   ** 同步修改 codec_eng/playfile2 開屏的機制
+5. SD upgrade 後會先自動 reset
+   ** 同時修正 upgrade.sh 中若有亂碼無法正確工作的問題
+6. 提供 MEDIA_USER0, MEDIA_USER1 的 media type
+   ** 語音留言可以利用新增的 media type 分別不同的目錄存放室內留言和室外留言
+7. 提供 video duration property
+8. codec_eng/encpic, decpic 加入判斷不完整 picture 檔的機制，避免不正常關機後的不完整檔案造成系統不正常。
+
+
+T582 SDK Nezha v2.06 Release Node
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+
+1. SD FAT 檔案系統更動快取記錄在directory 的位置
+   ** 2.05 以前 Format 的 SD Card 在 Windows Vista 系統讀取後，快取資料會污染。
+   ** 2.06 FAT reserve file 和 2.05 並不相容。 2.05 以前 Format 的 SD Card 必需
+      在 2.06 重新 format。
+
+2. OSD2 提供 1bp/2bp osd2 canvas 功能，可以讓程序員調用 setpixel/getpixel api 直接畫點到 osd2 層上。
+   － TWOSDTool 也配合提供新增 osd2 canvas 物件
+   － 參考 app3 sample
+
+3. CodecEng/playfile2 增強播放影片的效能，提供更正確和穩定的影音同步。並且提供 option 讓影片播完後停留在最後一禎或直接結束的選擇。
+
+4. 程序碼 NOR Flash 啟動強制寫入保護。DFUTool 和 SD Upgrade 也配合修改。
+
+5. TWOSDTool 修正 rebuild resource 會造成 sprite 丟失的錯誤。
+
+6. 提供 CCIR656 input 制式偵測 以及 CVBS DTO 的微調
+
+7. GreenTool 提供 RTC 自動校正。 
+
+8. GreenTool 中屏參程序(iml) 依專案管理(project) 
+
+9. GreenTool 提供 1024x600 TTL 預設屏參
+
+10. 提供 GPIOA api 
+
+11. 提供 Touch panel repeat event
+
+12. 提供簡化的 app 架構範例
+    - app OSD logo
+    - app2 小形 task 架構範例 
+
+13. Terawins Video Player 修正影音同步問題
+
+T582 SDK Nezha v2.05 Release Node
+————————————————
+1. Motion Detection (Beta) : 新增 MD Task 及 Doorphone2 上 MD 的 Demo
+   - T582 Doorhone2 Demo.pdf 
+2. Interlace 抓拍 (Beta) : 提拱 480i/576i JPEG
+3. DFUTool ： 提供 SPI path 燒錄 Resource/Code flash。 SPI 提速度自動偵測功能
+4. File Browser : Doorphone2 提供 file browser demo。 ls 支援 markls/seekmarkls API 方便 ls page up/page down。
+5. Doorphone2 Setup page 增加頁面， Browser 開關， MD 開關, Touch panel 重新校正
+6. SDK 支援 i80 Panel，增加 drvier/i80， 支援 9320, 9327 like protocol 驅動
+   - 增加 disp_ili9327 / disp_ili9320 目錄提供 9320, 9327 屏參設定
+7. TWOSDTool 
+   - 修正 osd2 menu name 錯誤
+   - 修正 1bp, 2bp, 4bp 背景透明問題
+   - 改善外部 MCU resource data structure 問題
+8. TWPlayer 
+   - 修正 Time display error
+   - 新增 replay, pause 功能
+   - 修正一些 bugs
+9. 提供 34 bytes user info 給 SDK user 加入 user 資料到 video/jpeg 檔頭
+   －參考 4 Code Engine / enpic, recfile
+10. 修正 RTC health detection
+11. 增加 ring tong 設定從 0 到 16，修正鈴聲的轉換工具
+   － 新的鈴聲工具支援 G.726, a-law, u-law 格式並且加入檔頭
+12. 新的 .dfu.layout summary, 提供 ROM file , RAM file 的分配表
+13. 修正 upgrade.sh 提供多個物件加入 action 中同時升級

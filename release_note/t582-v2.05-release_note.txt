@@ -1,0 +1,25 @@
+T582 SDK Nezha v2.05 Release Node
+————————————————
+1. Motion Detection (Beta) : 新增 MD Task 及 Doorphone2 上 MD 的 Demo
+   - T582 Doorhone2 Demo.pdf 
+2. Interlace 抓拍 (Beta) : 提拱 480i/576i JPEG
+3. DFUTool ： 提供 SPI path 燒錄 Resource/Code flash。 SPI 提速度自動偵測功能
+4. File Browser : Doorphone2 提供 file browser demo。 ls 支援 markls/seekmarkls API 方便 ls page up/page down。
+5. Doorphone2 Setup page 增加頁面， Browser 開關， MD 開關, Touch panel 重新校正
+6. SDK 支援 i80 Panel，增加 drvier/i80， 支援 9320, 9327 like protocol 驅動
+   - 增加 disp_ili9327 / disp_ili9320 目錄提供 9320, 9327 屏參設定
+7. TWOSDTool 
+   - 修正 osd2 menu name 錯誤
+   - 修正 1bp, 2bp, 4bp 背景透明問題
+   - 改善外部 MCU resource data structure 問題
+8. TWPlayer 
+   - 修正 Time display error
+   - 新增 replay, pause 功能
+   - 修正一些 bugs
+9. 提供 34 bytes user info 給 SDK user 加入 user 資料到 video/jpeg 檔頭
+   －參考 4 Code Engine / enpic, recfile
+10. 修正 RTC health detection
+11. 增加 ring tong 設定從 0 到 16，修正鈴聲的轉換工具
+   － 新的鈴聲工具支援 G.726, a-law, u-law 格式並且加入檔頭
+12. 新的 .dfu.layout summary, 提供 ROM file , RAM file 的分配表
+13. 修正 upgrade.sh 提供多個物件加入 action 中同時升級
