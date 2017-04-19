@@ -17,6 +17,8 @@
 #include <mconfig.h>
 #include "userdata.h"
 
+//#define USERDATA_TOTAL = 13;
+
 const int default_data[USERDATA_TOTAL] = {
 	0,		// RU_SET_LANG_INFO
 	0,		// RU_SET_WP_INFO,
@@ -58,11 +60,11 @@ int user_datas[USERDATA_TOTAL] = {
 	0x80,	// SATURATION,
 	NORFS,	// PICTURE_FS,
 	NORFS,	// AUDMASG_FS,
-	0,		// MD_RANGE_X,
-	0,		// MD_RANGE_Y,
-	720,	// MD_RANGE_W,
-	480,	// MD_RANGE_H,
-	0,		// BROWS_TYPE
+	0,		// Year,
+	0,		// Month,
+	0,		// Day,
+	0,		// Hour,
+	0,		// Minute
 };
 
 void get_userdata (int id)
@@ -88,7 +90,7 @@ void save_userdata (int id)
 
 void save_userdata_all (void)
 {
-	registry2_burst_set(RU_SET_LANG_INFO, user_datas, USERDATA_TOTAL);
+	//registry2_burst_set(RU_SET_LANG_INFO, user_datas, USERDATA_TOTAL);
 }
 
 void userdata_init (void)

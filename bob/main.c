@@ -96,11 +96,47 @@ static void shell_init(void)
     printf("stack   %08x-%p (size=%d)\n", addr, &__STACK_BARRIER, len);
 }
 
+void settime2nor(char *time_str)
+{
+	char str[2];
 
+	str[0] = time_str[0];
+	str[1] = time_str[1];
+	user_datas[E_YEAR] = atoi(str);
+	printf("year = %d\r\n", user_datas[E_YEAR]);
+	save_userdata(E_YEAR);
+
+	str[0] = time_str[2];
+	str[1] = time_str[3];
+	user_datas[E_MONTH] = atoi(str);
+	printf("month = %d\r\n", user_datas[E_MONTH]);
+	save_userdata(E_MONTH);
+
+	str[0] = time_str[4];
+	str[1] = time_str[5];
+	user_datas[E_DAY] = atoi(str);
+	printf("day = %d\r\n", user_datas[E_DAY]);
+	save_userdata(E_DAY);
+
+	str[0] = time_str[6];
+	str[1] = time_str[7];
+	user_datas[E_HOUR] = atoi(str);
+	printf("hour = %d\r\n", user_datas[E_HOUR]);
+	save_userdata(E_HOUR);
+
+	str[0] = time_str[8];
+	str[1] = time_str[9];
+	user_datas[E_MINUTE] = atoi(str);
+	printf("minute = %d\r\n", user_datas[E_MINUTE]);
+	save_userdata(E_MINUTE);
+
+	
+}
 int main_drive(void *sys_ctx)
 {
 	/* initialize for display and video input */
 	char time_str[32];
+	char i;
 	memset(time_str, 0, sizeof(time_str));
 	
 	display_init();
@@ -122,10 +158,10 @@ int main_drive(void *sys_ctx)
 	userdata_init();
 	dbg(2, "user data init\r\n");
 	
-	dbg(2, "br = %d; co = %d\r\n", user_datas[BRIGHTNESS], user_datas[CONTRAST]);
+	dbg(2, "br = %d; co = %d\r\n", user_datas[E_BRIGHTNESS], user_datas[E_CONTRAST]);
 	
-	br_val = user_datas[BRIGHTNESS];
-	co_val = user_datas[CONTRAST];
+	br_val = user_datas[E_BRIGHTNESS];
+	co_val = user_datas[E_CONTRAST];
 
 	/*brightness and contrast range [0:100]*/
 	if(br_val>100)
@@ -139,11 +175,20 @@ int main_drive(void *sys_ctx)
 	
 	/* this configure for demo board, default configure support EVB */
 	//sarkey_init_table(sarkey_demo_table, SARKEY_DEMOBOARD_NUM);
+	strcpy(time_str, "1704191448");
 
+	dbg(2, "copy str done\r\n");
+	
+	settime2nor(time_str);
+
+	dbg(2, "time has been set to nor flash\r\n");
+
+	strcpy(time_str, NULL);
+	
 	/* auto upgrade if has DFU files in SD card */
 	sd_auto_upgrade(time_str);
 
-	dbg(2, "time = %s\r\n", time_str);
+	dbg(2, "get updated time from sd card = %s\r\n", time_str);
 
 	tw_task_handler(1, tw_page_handler);
 

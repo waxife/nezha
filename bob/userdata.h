@@ -14,7 +14,7 @@
 
 #ifndef USERDATA_H_
 #define USERDATA_H_
-
+#if 0
 enum {
 	RU_SET_LANG_INFO = 0,
 	RU_SET_WP_INFO,
@@ -31,6 +31,25 @@ enum {
 	BROWS_TYPE,
 	USERDATA_TOTAL
 };
+#endif
+
+enum {
+	RESERVE_0 = 0,
+	RESERVE_1,
+	RESERVE_2,
+	E_CONTRAST,
+	E_BRIGHTNESS,
+	E_SATURATION,
+	E_PICTURE_FS,
+	E_AUDMASG_FS,
+	E_YEAR,
+	E_MONTH,
+	E_DAY,
+	E_HOUR,
+	E_MINUTE,
+	USERDATA_TOTAL
+};
+
 
 extern const int default_data[];
 extern const int limit_data[];

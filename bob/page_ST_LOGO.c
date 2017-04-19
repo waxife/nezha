@@ -166,9 +166,9 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 							disp_set_brightness(br_val*2+20); /*brightness from 20 to 220*/
 							dbg(2, "br +\r\n");
 							update_bc(br_val,co_val);
-							user_datas[BRIGHTNESS] = br_val;
-							dbg(2, "brightness set -> %d\r\n", user_datas[BRIGHTNESS]);
-							save_userdata(BRIGHTNESS);
+							user_datas[E_BRIGHTNESS] = br_val;
+							dbg(2, "brightness set -> %d\r\n", user_datas[E_BRIGHTNESS]);
+							save_userdata(E_BRIGHTNESS);
 						}
 						if (co_flag){
 							if(co_val < 100)
@@ -178,9 +178,9 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 							disp_set_contrast(co_val*2+20);/*contrast from 20 to 220*/
 							dbg(2, "co +\r\n");
 							update_bc(br_val,co_val);
-							user_datas[CONTRAST] = co_val;
-							dbg(2, "contrast set -> %d\r\n", user_datas[CONTRAST]);
-							save_userdata(CONTRAST);
+							user_datas[E_CONTRAST] = co_val;
+							dbg(2, "contrast set -> %d\r\n", user_datas[E_CONTRAST]);
+							save_userdata(E_CONTRAST);
 						}
 	
 					break;
@@ -210,9 +210,9 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 						disp_set_brightness(br_val*2+20);
 						dbg(2, "br -\r\n");
 						update_bc(br_val,co_val);
-						user_datas[BRIGHTNESS] = br_val;
-						dbg(2, "brightness set -> %d\r\n", user_datas[BRIGHTNESS]);
-						//save_userdata(BRIGHTNESS);
+						user_datas[E_BRIGHTNESS] = br_val;
+						dbg(2, "brightness set -> %d\r\n", user_datas[E_BRIGHTNESS]);
+						save_userdata(E_BRIGHTNESS);
 					}
 					if (co_flag){
 						if(co_val > 0)
@@ -220,9 +220,9 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 						disp_set_contrast(co_val*2+20);
 						dbg(2, "co -\r\n");
 						update_bc(br_val,co_val);
-						user_datas[CONTRAST] = co_val;
-						dbg(2, "contrast set -> %d\r\n", user_datas[CONTRAST]);
-						//save_userdata(CONTRAST);
+						user_datas[E_CONTRAST] = co_val;
+						dbg(2, "contrast set -> %d\r\n", user_datas[E_CONTRAST]);
+						save_userdata(E_CONTRAST);
 					}
 
 					break;
