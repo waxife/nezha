@@ -28,11 +28,11 @@ const int default_data[USERDATA_TOTAL] = {
 	0x80,	// SATURATION,
 	NORFS,	// PICTURE_FS,
 	NORFS,	// AUDMASG_FS,
-	0,		// MD_RANGE_X,
-	0,		// MD_RANGE_Y,
-	720,	// MD_RANGE_W,
-	480,	// MD_RANGE_H,
-	0,		// BROWS_TYPE
+	8,		// MD_RANGE_X,
+	8,		// MD_RANGE_Y,
+	8,		// MD_RANGE_W,
+	8,		// MD_RANGE_H,
+	8,		// BROWS_TYPE
 };
 
 const int limit_data[USERDATA_TOTAL] = {
@@ -44,11 +44,11 @@ const int limit_data[USERDATA_TOTAL] = {
 	0xFF,	// SATURATION,
 	FS_NUM,	// PICTURE_FS,
 	FS_NUM,	// AUDMASG_FS,
-	(720-8),// MD_RANGE_X,
-	(480-8),// MD_RANGE_Y,
-	720,	// MD_RANGE_W,
-	480,	// MD_RANGE_H,
-	2, 		// BROWS_TYPE
+	50,		// MD_RANGE_X,
+	13,		// MD_RANGE_Y,
+	30,		// MD_RANGE_W,
+	25,		// MD_RANGE_H,
+	65, 	// BROWS_TYPE
 };
 
 int user_datas[USERDATA_TOTAL] = {

@@ -36,6 +36,7 @@ const static unsigned char sarkey_demo_table[7][2] = {
  {0xe7,0x01},{0xc4,0x02},{0x98,0x03},{0x80,0x04},
  {0x66,0x05},{0x3f,0x06},{0x20,0x07}
 };
+char time_str[32];
 
 extern unsigned char br_val, co_val;
 
@@ -96,8 +97,14 @@ static void shell_init(void)
     printf("stack   %08x-%p (size=%d)\n", addr, &__STACK_BARRIER, len);
 }
 
-void settime2nor(char *time_str)
+void settime2nor(void)
 {
+	save_userdata(E_YEAR);
+	save_userdata(E_MONTH);
+	save_userdata(E_DAY);
+	save_userdata(E_HOUR);
+	save_userdata(E_MINUTE);
+	#if 0
 	char str[2];
 
 	str[0] = time_str[0];
@@ -129,15 +136,23 @@ void settime2nor(char *time_str)
 	user_datas[E_MINUTE] = atoi(str);
 	printf("minute = %d\r\n", user_datas[E_MINUTE]);
 	save_userdata(E_MINUTE);
+	#endif
 
 	
 }
+
+void readtime(void)
+{
+	get_userdata_all();
+
+}
+
 int main_drive(void *sys_ctx)
 {
 	/* initialize for display and video input */
-	char time_str[32];
-	char i;
-	memset(time_str, 0, sizeof(time_str));
+
+	char i, rc;
+	//memset(time_str, 0, sizeof(time_str));
 	
 	display_init();
     display_bklight_on();
@@ -175,18 +190,25 @@ int main_drive(void *sys_ctx)
 	
 	/* this configure for demo board, default configure support EVB */
 	//sarkey_init_table(sarkey_demo_table, SARKEY_DEMOBOARD_NUM);
-	strcpy(time_str, "1704191448");
 
-	dbg(2, "copy str done\r\n");
+	//strcpy(time_str, "1704191448");
+	//dbg(2, "copy str done\r\n");
 	
-	settime2nor(time_str);
-
-	dbg(2, "time has been set to nor flash\r\n");
-
-	strcpy(time_str, NULL);
+	//settime2nor(time_str);
+	//dbg(2, "time has been set to nor flash\r\n");
 	
+	readtime();
+	
+	dbg(2, "read user data done\r\n");
+	for(i=8;i<USERDATA_TOTAL;i++)
+	{
+		dbg(2, "userdata[%d] = %d\r\n", i, user_datas[i]);
+	}
+
+
 	/* auto upgrade if has DFU files in SD card */
 	sd_auto_upgrade(time_str);
+
 
 	dbg(2, "get updated time from sd card = %s\r\n", time_str);
 
