@@ -159,11 +159,11 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 							dbg(2, "snap service done\r\n");
 						}
 						if (br_flag){
-							if(br_val < 100)
+							if(br_val < 255)
 							br_val++;
 							else
-							br_val = 100;
-							disp_set_brightness(br_val*2+20); /*brightness from 20 to 220*/
+							br_val = 255;
+							disp_set_brightness(br_val); /*brightness from 0 to 255*/
 							dbg(2, "br +\r\n");
 							update_bc(br_val,co_val);
 							user_datas[E_BRIGHTNESS] = br_val;
@@ -171,16 +171,22 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 							save_userdata(E_BRIGHTNESS);
 						}
 						if (co_flag){
-							if(co_val < 100)
+							if(co_val < 255)
 							co_val++;
 							else
-							co_val = 100;
-							disp_set_contrast(co_val*2+20);/*contrast from 20 to 220*/
+							co_val = 255;
+							disp_set_contrast(co_val);/*contrast from 0 to 255*/
 							dbg(2, "co +\r\n");
 							update_bc(br_val,co_val);
 							user_datas[E_CONTRAST] = co_val;
 							dbg(2, "contrast set -> %d\r\n", user_datas[E_CONTRAST]);
 							save_userdata(E_CONTRAST);
+						}
+						if((cur_flag==1)&&(quit_flag==1))
+						{
+							cur_flag = 0;
+							dbg(2,"exit osd, \r\n");
+							osd2_disable();
 						}
 	
 					break;
@@ -192,13 +198,13 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 							//display_bklight_on();
 							display_set_cvbs_full(2,0);
 							cvbs2_bluescreen_on(0, 0, 0, 0);
-							printf("liveview display again\r\n");
+							dbg(2, "liveview display again\r\n");
 						}
 						if((cur_flag==1)&&(quit_flag==1))
 						{
-							cur_flag = 0;
-							dbg(2,"exit osd, \r\n");
-							osd2_disable();
+							format_sdcared();
+							dbg(2, "format SD done\r\n");
+							//cq_write_byte_issue(CQ_P0, 0x91, 0xB8, CQ_TRIGGER_SW);
 						}
 						
 					break;
@@ -207,7 +213,7 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 					if (br_flag){
 						if(br_val > 0)
 						br_val--;
-						disp_set_brightness(br_val*2+20);
+						disp_set_brightness(br_val);
 						dbg(2, "br -\r\n");
 						update_bc(br_val,co_val);
 						user_datas[E_BRIGHTNESS] = br_val;
@@ -217,7 +223,7 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 					if (co_flag){
 						if(co_val > 0)
 						co_val--;
-						disp_set_contrast(co_val*2+20);
+						disp_set_contrast(co_val);
 						dbg(2, "co -\r\n");
 						update_bc(br_val,co_val);
 						user_datas[E_CONTRAST] = co_val;
