@@ -28,7 +28,7 @@
 #include "srv_evt_cmd.h"
 #include "snap_service.h"
 
-#define SNAP_TWO_FIELD_MODE
+//#define SNAP_TWO_FIELD_MODE
 
 //#define TASK_USE_UI
 #ifdef TASK_USE_UI
@@ -85,7 +85,7 @@ static int set_snap_config (struct epic_opt_t *epic_opt)
 		epic_opt->width = 720;
 		epic_opt->height = 240;
 		epic_opt->standard = AVIN_CVBS_NTSC;
-		epic_opt->quality = 80;
+		epic_opt->quality = 100;/*previous 80*/
 #ifdef SNAP_TWO_FIELD_MODE
 		epic_opt->field_type = TWO_FIELD;
 #else
@@ -98,7 +98,7 @@ static int set_snap_config (struct epic_opt_t *epic_opt)
 		epic_opt->width = 720;
 		epic_opt->height = 288;
 		epic_opt->standard = AVIN_CVBS_PAL;
-		epic_opt->quality = 80;
+		epic_opt->quality = 100;/*previous 80*/
 #ifdef SNAP_TWO_FIELD_MODE
 		epic_opt->field_type = TWO_FIELD;
 #else

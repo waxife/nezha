@@ -15,7 +15,7 @@
 #define __DEBUG_H
 
 #ifndef DBG_LEVEL
-#define DBG_LEVEL   3
+#define DBG_LEVEL   2
 #endif
 
 #ifndef DBG_PRINT
@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #define DBG_ABORT   abort
 #endif
-    
+ 
 
 #ifdef NDEBUG
 #define assert(expr)    /* ({ if (!(expr)) DBG_ABORT(); }) */

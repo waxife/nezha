@@ -94,7 +94,7 @@ void update_data(unsigned char br_or_co, unsigned char data, unsigned char bit)
 int update_bc(unsigned char br, unsigned char co)
 {
 	//unsigned char p_table[1];
-	int temp;
+	//int temp;
 	unsigned char unit_d[3];
 	unsigned char i;
 	
@@ -122,6 +122,8 @@ int update_bc(unsigned char br, unsigned char co)
 	update_data(CONTRAST_D, unit_d[i], i);
 
 	osd2_update();
+	
+	return 0;
 }
 
 
@@ -129,11 +131,10 @@ int update_bc(unsigned char br, unsigned char co)
 unsigned char page_ST_LOGO_process (TW_EVENT* event)
 {
 
-	unsigned char twsrv_id = 0, twsrv_key = 0;
+	//unsigned char twsrv_id = 0, twsrv_key = 0;
 	//int rc;
-	char a,b;
-	
-	struct tm tm1;
+	//char a,b;
+	//struct tm tm1;
 	struct pviewsrv_opt_t pview_obj;
 	pview_obj.dev = FATFS;
 	pview_obj.mark = 0;
@@ -142,7 +143,7 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 	{
 		case TW_EVENT_TYPE_ENTER_SYSTEM:
 			dbg(2, ">>>>> Enter Menu Page\n\r");
-			dbg(2, "page_img_rom_font_1 address = %x\r\n", &page_img_rom_font_1);
+			//dbg(2, "page_img_rom_font_1 address = %x\r\n", &page_img_rom_font_1);
 			watchdog_disable();
 		break;
 
@@ -182,11 +183,11 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 							dbg(2, "contrast set -> %d\r\n", user_datas[E_CONTRAST]);
 							save_userdata(E_CONTRAST);
 						}
-						if((cur_flag==1)&&(quit_flag==1))
+						if((cur_flag==1)&&(quit_flag==1))/*when cursor at "exit", press snap key, then format coard*/
 						{
-							cur_flag = 0;
-							dbg(2,"exit osd, \r\n");
-							osd2_disable();
+							format_sdcared();
+							dbg(2, "format SD done\r\n");
+							//cq_write_byte_issue(CQ_P0, 0x91, 0xB8, CQ_TRIGGER_SW);
 						}
 	
 					break;
@@ -202,9 +203,9 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 						}
 						if((cur_flag==1)&&(quit_flag==1))
 						{
-							format_sdcared();
-							dbg(2, "format SD done\r\n");
-							//cq_write_byte_issue(CQ_P0, 0x91, 0xB8, CQ_TRIGGER_SW);
+							cur_flag = 0;
+							dbg(2,"exit osd, \r\n");
+							osd2_disable();
 						}
 						
 					break;

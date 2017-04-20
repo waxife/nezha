@@ -31,6 +31,8 @@ struct upgrade_ctx _ctx;
 //extern unsigned int _fr1, _r1_size, _fr2, _r2_size, _fr3, _r3_size;
 extern int ugprintf16(const char *fmt, ...);
 extern unsigned int _fringtong;
+extern char time_str[32];
+extern void settime2nor(void);
 
 __text__
 void _putb(const char c)
@@ -1212,11 +1214,13 @@ void upgrade_sequence(void)
 			
 		
     _nor_wrsr (0x3C); //enable write protect
+    settime2nor();
+	_putstring("time set done.\n");
     _finish_rom_message();
     _putstring("set nor-flash write protect.\n");
     _putstring("All component upgrade finished. Now restart system...\n");
     
-    _twdDelay(5000000);
+    //_twdDelay(5000000);
     _sys_reset();
 }
 

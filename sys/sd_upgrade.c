@@ -24,11 +24,18 @@
 #include "display.h"
 #include "r4kcache.h"
 #include <watchdog.h>
+#include "../bob/userdata.h"
 
 extern unsigned int _fupg, _eupg;
 extern unsigned int _ftext, _etext;
 extern unsigned int _fdata, _edata;
 extern unsigned int _upgrade_nor, _upgrade_size, _fringtong;
+
+extern const int default_data[];
+extern const int limit_data[];
+extern int user_datas[];
+//extern void settime2nor(char *time_str);
+
 
 #define CONFIG_FILE "upgrade.sh"
 
@@ -227,17 +234,17 @@ void _get_upg_info(struct fd32 *fd, struct upg_sh *upg_info)
 		if(!_isLegal(buffer[i])) {   
 
 			line[li] = 0;
-			printf("line-1 %s\n", line);
+			//printf("line-1 %s\n", line);
 			_get_info_from_line(line, upg_info);
-			printf("line-1 done\n");
+			//printf("line-1 done\n");
 			break;
         }
         else if((buffer[i] == NL_SIGN || buffer[i] == NL_SIGN_E)) {   
 
             line[li] = 0;
-			printf("line-2 %s\n", line);
+			//printf("line-2 %s\n", line);
             _get_info_from_line(line, upg_info);   
-			printf("line-2 done\n");
+			//printf("line-2 done\n");
             li = 0;
         }
         else {
@@ -304,7 +311,9 @@ sd_auto_upgrade_with_time_stamp (unsigned long time_stamp_mark, char *time)
     struct fd32 fd[1];
     char *fupgrade, *eupgrade, *ftext, *etext, *fdata;
     int rc, i;
+	char time_cmp[2]; 
     struct upg_sh upg_info;
+	char flash_flag = 0;
    
     char string_buf[KEY_COUNT][LINE_SIZE];
     const unsigned int KEY_TBL_COUNT = 5 + config_ringtong_num;
@@ -340,7 +349,7 @@ sd_auto_upgrade_with_time_stamp (unsigned long time_stamp_mark, char *time)
     _ctx.dcache.sets = dcache.sets;
     _ctx.dcache.waysize = dcache.waysize;
     _ctx.dcache.waybit = dcache.waybit;
-    printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@\r\n");
+    //printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@\r\n");
     /* prepare for dma */
     writel (1, DMA_CSR);    /* set AH0, AH1 little endian, enable DMA */
     /* prepare for fat */
@@ -357,7 +366,7 @@ sd_auto_upgrade_with_time_stamp (unsigned long time_stamp_mark, char *time)
     _ctx.sdc.rca = sdc->rca;
     _ctx.sdc.card.type = sdc->card.type;
     _ctx.sdc.card.readtimeout = sdc->card.readtimeout;
-    printf("00000000000000000000000\r\n");
+    //printf("00000000000000000000000\r\n");
     /* search firmware */
     rc = _open (fd, CONFIG_FILE, 0, FD_RDONLY);
     if (rc < 0) {
@@ -367,11 +376,11 @@ sd_auto_upgrade_with_time_stamp (unsigned long time_stamp_mark, char *time)
         return -1;
     }
 
-	printf("11111111111111111111111111\r\n");
+	//printf("11111111111111111111111111\r\n");
     _init_upg_sh(&upg_info, string_buf, struct_buf);    
-	printf("2222222222222222222222222222\r\n");
+	//printf("2222222222222222222222222222\r\n");
     _get_upg_info(fd, &upg_info);      
-	printf("33333333333333333333333333333\r\n");
+	//printf("33333333333333333333333333333\r\n");
 
     _close (fd);
 
@@ -407,12 +416,73 @@ sd_auto_upgrade_with_time_stamp (unsigned long time_stamp_mark, char *time)
  	printf("This upgrade work with time stamp %08X. \n", (unsigned int)time_stamp_mark);
     _ctx.time_stamp_mark = time_stamp_mark;	
 
-
-    _do_upg(fat, &upg_info, orders, order_count);
+	printf("prepare updating\r\n");
+    //_do_upg(fat, &upg_info, orders, order_count);
 
 	if (time != NULL)
 	{
+		time_cmp[0] = upg_info.time_val[0];
+		time_cmp[1] = upg_info.time_val[1];
+		if(atoi(time_cmp)!=user_datas[E_YEAR])
+		{
+			printf("year in sd != year in flash\r\n");
+			user_datas[E_YEAR] = atoi(time_cmp);
+			//settime2nor(upg_info.time_val);
+			//_do_upg(fat, &upg_info, orders, order_count);
+			//return 0;
+			flash_flag = 1;
+		}
+
+		time_cmp[0] = upg_info.time_val[2];
+		time_cmp[1] = upg_info.time_val[3];
+		if(atoi(time_cmp)!=user_datas[E_MONTH])
+		{
+			printf("month in sd != month in flash\r\n");
+			user_datas[E_MONTH] = atoi(time_cmp);
+			//settime2nor(upg_info.time_val);
+			//_do_upg(fat, &upg_info, orders, order_count);
+			//return 0;
+			flash_flag = 1;
+		}
+		
+		time_cmp[0] = upg_info.time_val[4];
+		time_cmp[1] = upg_info.time_val[5];
+		if(atoi(time_cmp)!=user_datas[E_DAY])
+		{
+			printf("day in sd != day in flash\r\n");
+			user_datas[E_DAY] = atoi(time_cmp);
+			//settime2nor(upg_info.time_val);
+			//_do_upg(fat, &upg_info, orders, order_count);
+			//return 0;
+			flash_flag = 1;
+		}
+
+		time_cmp[0] = upg_info.time_val[6];
+		time_cmp[1] = upg_info.time_val[7];
+		if(atoi(time_cmp)!=user_datas[E_HOUR])
+		{
+			printf("hour in sd != hour in flash\r\n");
+			user_datas[E_HOUR] = atoi(time_cmp);
+			//settime2nor(upg_info.time_val);
+			//_do_upg(fat, &upg_info, orders, order_count);
+			//return 0;
+			flash_flag = 1;
+		}
+		
+		time_cmp[0] = upg_info.time_val[8];
+		time_cmp[1] = upg_info.time_val[9];
+		if(atoi(time_cmp)!=user_datas[E_MINUTE])
+		{
+			printf("start upgrade procedure\r\n");
+			user_datas[E_MINUTE] = atoi(time_cmp);
+			//settime2nor(upg_info.time_val);
+			//_do_upg(fat, &upg_info, orders, order_count);
+			//return 0;
+			flash_flag = 1;
+		}
 		strcpy(time,upg_info.time_val);
+		if(flash_flag)
+		{_do_upg(fat, &upg_info, orders, order_count);}
 	}
     
     return 0;
