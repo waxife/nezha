@@ -144,6 +144,7 @@ void init(int flash_type, char *argv[], uint32_t magic)
     norfs_init ();
 
     scaler_open();
+	
     cq_init();
 
     watchdog_init();

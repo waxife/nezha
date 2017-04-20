@@ -157,7 +157,7 @@ int main_drive(void *sys_ctx)
 	display_init();
     display_bklight_on();
     //Enable Color Bar
-    //cq_write_byte_issue(CQ_P0, 0x91, 0xB8, CQ_TRIGGER_SW);
+    cq_write_byte_issue(CQ_P0, 0x91, 0xB8, CQ_TRIGGER_SW);
 
 	display_set_cvbs_full(2, CH0);
     cvbs2_bluescreen_on(0,0,0,0);
@@ -178,14 +178,14 @@ int main_drive(void *sys_ctx)
 	br_val = user_datas[E_BRIGHTNESS];
 	co_val = user_datas[E_CONTRAST];
 
-	/*brightness and contrast range [0:100]*/
-	if(br_val>100)
+	/*brightness and contrast range [0:255]*/
+	if(br_val>255)
 	{
-		br_val = 100;
+		br_val = 255;
 	}
-	if(co_val>100)
+	if(co_val>255)
 	{
-		co_val = 100;
+		co_val = 255;
 	}
 	
 	/* this configure for demo board, default configure support EVB */
