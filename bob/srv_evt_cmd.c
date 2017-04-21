@@ -972,7 +972,6 @@ static int srv_event_parse (unsigned char key, int srv_id)
 static int srv_key_process(unsigned char key_code, int srv_id)
 {
 	int rc = 0;
-
 	if((key_code >= KEY_CODE_1) && (key_code <= KEY_CODE_7)) {
 		// dbg(2, ">>> KEY %d\n\r", key_code);
 
@@ -990,6 +989,8 @@ static int srv_key_process(unsigned char key_code, int srv_id)
 			case 5:
 			rc = CMD_QUIT;
 			break;
+			case 1:
+			rc = CMD_DELETE;
 			default:
 			break;
 		}
@@ -1118,7 +1119,6 @@ int get_sys_cmd (int srv_id)
 
 	/* get system of event */
 	event = tw_get_sys_evt();
-
 	/* event process & parse to command */
 	switch(event->type) {
 #if 0
@@ -1139,9 +1139,6 @@ int get_sys_cmd (int srv_id)
 		break;
 #endif
 	case TW_EVENT_TYPE_KEY_DOWN:
-		dbg(2, ">>>>>> Key Down Event\n\r");
-		dbg(2, "keystroke = 0x%02X\n\r", event->keystroke.ch);
-
 		return srv_key_process(event->keystroke.ch, srv_id);
 		break;
 #if 0

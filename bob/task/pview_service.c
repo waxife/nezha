@@ -424,8 +424,10 @@ static int pview_cmd_callback (void **arg)
     	}
     	else/* get system of event */
     	    cmd = get_sys_cmd(ST_DECPIC);
+		//dbg(2,"111111111\r\n");
     } else { /* invalid, maybe codec taking */
     	cmd = get_sys_cmd(ST_DECPIC);
+		//dbg(2,"222222222\r\n");
     	//return cmd;
     }
 	//dbg(0,"cmd=%d\r\n", cmd);
@@ -626,10 +628,11 @@ void pview_srv (struct pviewsrv_opt_t *pviewsrv_opt)
         case CMD_NEXT:          /* get next file and continue picture view */
 	        cmd = CMD_NEXT;
 	        continue;
-        case CMD_PREVIOUS:		/* get previous file and continue picture view */
+        case CMD_PREVIOUS:	/* get previous file and continue picture view */
 	        cmd = CMD_PREVIOUS;
 	        continue;
         case CMD_DELETE:
+			
         	//show_deleting_ui(SHOW_THIS_OSD);
         	rc = delete_curr_pic(hls);
         	//show_deleting_ui(CLEAR_THIS_OSD);
@@ -680,18 +683,19 @@ WAIT_TASK_CMD:
 				break;
 			case CMD_USER_COPY:	/* copy from NOR to SD card */
 				if(dpic_opt.dev == NORFS) {
-					show_copying_ui(SHOW_THIS_OSD);
+					//show_copying_ui(SHOW_THIS_OSD);
 					//rc = pic_backup2sd(PIC_LS, photo_fname);
-					show_copying_ui(CLEAR_THIS_OSD);
+					//show_copying_ui(CLEAR_THIS_OSD);
 					if(rc < 0)
 						show_file_issue(SHOW_THIS_OSD);
 				}
 				cmd = CMD_PLAY;
 				break;
 	        case CMD_DELETE:
-	        	show_deleting_ui(SHOW_THIS_OSD);
+	        	//show_deleting_ui(SHOW_THIS_OSD);
+	        	dbg(2, "ddfkjflsjaf\r\n");
 	        	rc = delete_curr_pic(hls);
-	        	show_deleting_ui(CLEAR_THIS_OSD);
+	        	//show_deleting_ui(CLEAR_THIS_OSD);
 	        	if(rc < 0) { 		/* unknown error */
 	        		ERROR ("deletels(), rc=%d\n", rc);
 	        	} else {

@@ -156,7 +156,23 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 			{
 				case 3: /*start snap service  key up*/
 						if(!cur_flag){
+							tw_menu_draw((struct tw_menu*)&page_img_osd2_0_menu);
+							osd2_clear_menu(0x1bc5,50,20);
+							osd2_enable();
+
 							snap_srv(&pview_obj);
+
+							tw_icons_loc((struct tw_icons*)&page_img_rom_font_131, 5, 1);/*display star*/
+							tw_icons_loc((struct tw_icons*)&page_img_rom_font_131, 6, 1);/*display star*/
+							tw_icons_loc((struct tw_icons*)&page_img_rom_font_131, 7, 1);/*display star*/
+
+							pview_srv((void *)&pview_obj);
+
+							display_set_cvbs_full(2,0);
+							cvbs2_bluescreen_on(0, 0, 0, 0);
+							
+							osd2_disable();
+							
 							dbg(2, "snap service done\r\n");
 						}
 						if (br_flag){
@@ -193,7 +209,16 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 					break;
 				case 1: /*Review*/
 						if(!cur_flag){
+							tw_menu_draw((struct tw_menu*)&page_img_osd2_0_menu);
+							osd2_clear_menu(0x1bc5,50,20);
+							osd2_enable();
+							tw_icons_loc((struct tw_icons*)&page_img_rom_font_131, 5, 1);/*display star*/
+							tw_icons_loc((struct tw_icons*)&page_img_rom_font_131, 6, 1);/*display star*/
+							tw_icons_loc((struct tw_icons*)&page_img_rom_font_131, 7, 1);/*display star*/
+							
 							pview_srv((void *)&pview_obj);
+
+							osd2_disable();
 							/*to liveview*/
 							//display_init();
 							//display_bklight_on();

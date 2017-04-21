@@ -99,6 +99,7 @@ static int set_snap_config (struct epic_opt_t *epic_opt)
 		epic_opt->height = 288;
 		epic_opt->standard = AVIN_CVBS_PAL;
 		epic_opt->quality = 100;/*previous 80*/
+		dbg(2, "snap quality is 100\r\n");
 #ifdef SNAP_TWO_FIELD_MODE
 		epic_opt->field_type = TWO_FIELD;
 #else
