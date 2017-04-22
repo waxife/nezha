@@ -174,7 +174,8 @@ int main_drive(void *sys_ctx)
 	dbg(2, "user data init\r\n");
 	
 	dbg(2, "br = %d; co = %d\r\n", user_datas[E_BRIGHTNESS], user_datas[E_CONTRAST]);
-	
+
+	#if 1
 	br_val = user_datas[E_BRIGHTNESS];
 	co_val = user_datas[E_CONTRAST];
 
@@ -187,6 +188,7 @@ int main_drive(void *sys_ctx)
 	{
 		co_val = 255;
 	}
+	#endif
 	
 	/* this configure for demo board, default configure support EVB */
 	//sarkey_init_table(sarkey_demo_table, SARKEY_DEMOBOARD_NUM);

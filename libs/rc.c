@@ -652,9 +652,9 @@ void show_resource_header (unsigned short res_id)
 	
 	type = rc_type(res_id);
 
-    DBG_PRINT("rc_id   : %u\n", res_id);
-	DBG_PRINT("rc_type   : %d\n", type);
-	DBG_PRINT("rc_len    : %ld bytes\n", rc_len(res_id));
+    //DBG_PRINT("rc_id   : %u\n", res_id);
+	//DBG_PRINT("rc_type   : %d\n", type);
+	//DBG_PRINT("rc_len    : %ld bytes\n", rc_len(res_id));
 
 	fp = rc_data(res_id);
 

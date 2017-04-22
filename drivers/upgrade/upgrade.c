@@ -1214,13 +1214,13 @@ void upgrade_sequence(void)
 			
 		
     _nor_wrsr (0x3C); //enable write protect
-    settime2nor();
-	_putstring("time set done.\n");
+    //settime2nor();//nor flash size is not same
+	//_putstring("time set done.\n");
     _finish_rom_message();
     _putstring("set nor-flash write protect.\n");
     _putstring("All component upgrade finished. Now restart system...\n");
     
-    //_twdDelay(5000000);
+    _twdDelay(5000000);
     _sys_reset();
 }
 

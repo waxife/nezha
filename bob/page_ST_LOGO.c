@@ -185,7 +185,7 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 							update_bc(br_val,co_val);
 							user_datas[E_BRIGHTNESS] = br_val;
 							dbg(2, "brightness set -> %d\r\n", user_datas[E_BRIGHTNESS]);
-							save_userdata(E_BRIGHTNESS);
+							//save_userdata(E_BRIGHTNESS);
 						}
 						if (co_flag){
 							if(co_val < 255)
@@ -197,7 +197,7 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 							update_bc(br_val,co_val);
 							user_datas[E_CONTRAST] = co_val;
 							dbg(2, "contrast set -> %d\r\n", user_datas[E_CONTRAST]);
-							save_userdata(E_CONTRAST);
+							//save_userdata(E_CONTRAST);
 						}
 						if((cur_flag==1)&&(quit_flag==1))/*when cursor at "exit", press snap key, then format coard*/
 						{
@@ -244,7 +244,7 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 						update_bc(br_val,co_val);
 						user_datas[E_BRIGHTNESS] = br_val;
 						dbg(2, "brightness set -> %d\r\n", user_datas[E_BRIGHTNESS]);
-						save_userdata(E_BRIGHTNESS);
+						//save_userdata(E_BRIGHTNESS);
 					}
 					if (co_flag){
 						if(co_val > 0)
@@ -254,7 +254,7 @@ unsigned char page_ST_LOGO_process (TW_EVENT* event)
 						update_bc(br_val,co_val);
 						user_datas[E_CONTRAST] = co_val;
 						dbg(2, "contrast set -> %d\r\n", user_datas[E_CONTRAST]);
-						save_userdata(E_CONTRAST);
+						//save_userdata(E_CONTRAST);
 					}
 
 					break;
